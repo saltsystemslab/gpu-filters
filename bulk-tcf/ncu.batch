@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH -A m2865_g
+#SBATCH -N 1
+#SBATCH -C gpu
+#SBATCH -q regular
+#SBATCH -t 1:00:00
+#SBATCH -c 10
+#SBATCH -G 1
+#SBATCH -o testing_profile.out
+#SBATCH -J 64_256
+
+srun -N 1 -n 1 ncu -f -o recordings/batched_tests/batch_analysis_64_256 --set full ./batched_template_tests 30 20
+
+
