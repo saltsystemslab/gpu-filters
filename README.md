@@ -59,7 +59,7 @@ To build the tests, specify the ```-DBUILD_TESTS=ON``` flag to CMake.
 
 
 
-PUBLICATION
+Publication
 -----------
 
 These filters were released in the publication "High Performance Filters For GPUs" at PPOPP 2023.
