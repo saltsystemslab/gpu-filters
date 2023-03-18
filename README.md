@@ -1,7 +1,7 @@
 # GPU Filters
 High-Performance GPU Filters
 
-#FEATURES
+FEATURES
 ---------
 
 1) Two Choice Filter (TCF)
