@@ -1,12 +1,5 @@
-# Gpu Filters
+# GPU Filters
 High-Performance GPU Filters
-
-
-This library is composed of template objects that allow you to quickly build and modify a modular table while maintaining high performance.
-
-The end goal of the library is to add simple-to-use data structures that simplify the use of CUDA and bring a syntax similar to mainline C++.
-
-For now, the only features that are supported are the hash table and filter components.
 
 FEATURES
 ________________
@@ -16,11 +9,11 @@ ________________
 	- Modular components to specify data layout, access patterns, and false-positive rate.
     - Recursive template structure lets you build efficient multi-layer tables with minimal effort.
 
-2) Bulk Two Choice Filter
+2) Bulk Two Choice Filter (Bulk TCF)
 	- A TCF implementation optimized for bulk data. Uses Thrust to efficiently group keys for operations.
 
 
-3) GPU Quotient Filter
+3) GPU Quotient Filter (GQF)
 	- A Counting Quotient Filter implementation on the GPU
 	- supports insertions, queries, deletions, key-value assocation, and counting.
 	- Point and Bulk API for different workloads
@@ -73,6 +66,10 @@ ________________
 4) Sparse ML components.
 
 
+AUTHORS
+______________
+
+
 
 PUBLICATIONS
 ______________
@@ -102,7 +99,13 @@ series = {PPoPP '23}
 ```
 
 
+PULL REQUESTS
+______________
+
+
 CONTACT
 _____________
 
-If you have any questions/comments/concerns, you can reach me at hunter@cs.utah.edu.
+If you have any questions/comments/concerns, you can reach contact us at:
+
+	Hunter McCoy: hunter@cs.utah.edu.

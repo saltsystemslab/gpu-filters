@@ -31,9 +31,11 @@ BULK API
 --------
 * `__host__ void bulk_insert(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t flags)`: Insert a batch of items into the filter using the even-odd insert scheme.
 * `__host__ void bulk_insert_reduce(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t flags)`: Insert a batch of items, but perform a reduction before inserting into the CQF. This should be used when the inputs are expected to have heavy skew.
-* `__host__ void bulk_get(QF* qf, uint64_t nvals, uint64_t * keys, uint64_t * returns)`: Fills returns with the counts of keys in the filter.
+* `__host__ void bulk_query(QF* qf, uint64_t nvals, uint64_t * keys, uint64_t * returns)`: Fills returns with the counts of keys in the filter.
 * `__host__ void bulk_delete(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t flags)`: Decrement the counts of all items in keys by one, removing them from the filter if count == 0.
 
+
+BULK API (with Values)
 
 
 
@@ -66,12 +68,6 @@ The argument to -d is the filter being tested. The currently supported filter ty
  - sqf (Standard Quotient Filter from [Geil et al.](https://escholarship.org/uc/item/3v12f7dn))
  - rsqf (Rank-Select Quotient Filter from [Geil et al.](https://escholarship.org/uc/item/3v12f7dn))
  - bloom (Bloom Filter)
-
-
-MetaHipMer
-----------
-
-The GQF has been integrated with MetaHipMer and is available [here](https://bitbucket.org/berkeleylab/mhm2/src/master/).
 
 
 Testing
@@ -121,5 +117,5 @@ Contributions via GitHub pull requests are welcome.
 
 Authors
 -------
-- Hunter McCoy <hjmccoy@lbl.gov>
-- Prashant Pandey <prashantpa@vmware.com>
+- Hunter McCoy <hunter@cs.utah.edu>
+- Prashant Pandey <pandey@cs.utah.edu>

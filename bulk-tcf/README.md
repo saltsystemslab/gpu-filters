@@ -31,11 +31,6 @@ To build / run:
  $ ./batched_template_tests num_bits num_batches
 ```
 
-TCF
-------------
-A more complete version of the two choice filter is available at: https://github.com/huntermBerkeley/poggers
-
-
 If you have any questions you can reach me at hunter@cs.utah.edu.
 
 Authors
