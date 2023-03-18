@@ -1,8 +1,8 @@
 # GPU Filters
 High-Performance GPU Filters
 
-FEATURES
-________________
+#FEATURES
+---------
 
 1) Two Choice Filter (TCF)
 	- A set of high-performance template components for building point key-value data strucutures.
@@ -51,28 +51,16 @@ To cache the library, specify a download folder:
 
 
 Building Tests
-___________________
+--------------
 
 There are a series of optional tests that can be included with the build.
 
 To build the tests, specify the ```-DBUILD_TESTS=ON``` flag to CMake.
 
 
-FUTURE WORK
-________________
 
-2) Dynamic GPU Allocation - In Progress!
-3) Host-Device pinned device-side communication
-4) Sparse ML components.
-
-
-AUTHORS
-______________
-
-
-
-PUBLICATIONS
-______________
+PUBLICATION
+-----------
 
 These filters were released in the publication "High Performance Filters For GPUs" at PPOPP 2023.
 
@@ -99,13 +87,12 @@ series = {PPoPP '23}
 ```
 
 
-PULL REQUESTS
-______________
+Contributing
+------------
+Contributions via GitHub pull requests are welcome.
 
 
-CONTACT
-_____________
-
-If you have any questions/comments/concerns, you can reach contact us at:
-
-	Hunter McCoy: hunter@cs.utah.edu.
+Authors
+-------
+- Hunter McCoy <hunter@cs.utah.edu>
+- Prashant Pandey <pandey@cs.utah.edu>
