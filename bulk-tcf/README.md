@@ -19,7 +19,8 @@ API
 --------
 
 
-#Template Parameters
+Template Parameters
+--------
 The class "bulk_host_tcf" provides a wrapper to make is easy to use the bulk tcf. The api for this wrapper is included below.
 
 template parameters for the filter: `host_bulk_tcf<input_key_type, store_key_type, store_val_type, wrapper>`
@@ -29,7 +30,8 @@ template parameters for the filter: `host_bulk_tcf<input_key_type, store_key_typ
 * `wrapper`: To use values add the template `wrapper` from `bulk_tcf_key_val_pair` along with your value type. Otherwise, you can template the filter type without a wrapper as `bulk_host_tcf<input_key_type, store_key_type>`
 
 
-#Metadata
+Metadata
+--------
 
 The size of the internal blocks used in the bulk TCF can be modified inside of `include/tcf_bulk_metadata.cuh`. The configurable parameters are:
 
@@ -38,7 +40,8 @@ The size of the internal blocks used in the bulk TCF can be modified inside of `
 * `BYTES_PER_CACHE_LINE / CACHE_LINES_PER_BLOCK`: These two values multiplied together is the amount of space given to each filter section. Upping this increases throughput but is limited by shared memory.
 
 
-#recommended metadata
+Recommended metadata
+--------
 
 For the key-only bulk tcf with key size uint16_t, the optimal configuration is `16, 128, 128, 2`.
 
@@ -47,7 +50,8 @@ For 16 bit keys, 16 bit vals, the optimal configuration is `16, 64, 128, 4`.
 
 
 
-#Functions
+Functions
+--------
 * `__host__ static host_bulk_tcf * build_tcf(uint64_t nslots)`: Construct a filter with `nslosts` slots. This can hold `.85*nslots` items.
 *  `__host__ void bulk_insert(Large_Keys * keys, uint64_t nitems, uint64_t * misses)`: Insert `nitems` stored in `keys` into the filter. Counts the number of insertions that fail.
 * `__host__ bool * bulk_query(Large_Keys * query_keys, uint64_t nitems)`: Check for Inclusion in the filter. Returns a bitvector where `bit[i]` is set if `query_keys[i]` is found in the filter.
