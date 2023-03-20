@@ -164,6 +164,44 @@ __global__ void hash_all_key_purge(Filter * my_tcf, uint64_t * keys, Key_type * 
 }
 
 
+template <typename Filter, typename Key_type, typename Val_type>
+__global__ void hash_all_key_purge_values(Filter * my_tcf, uint64_t * keys, Val_type * vals, Key_type * tags, uint64_t nvals){
+
+
+	uint64_t tid = threadIdx.x + blockDim.x*blockIdx.x;
+
+	if (tid >= nvals) return;
+
+	uint64_t key = keys[tid];
+
+	//shrink the keys
+	//this is valid and preserves query values.
+
+	key = my_tcf->hash_key(key);
+
+	tags[tid].set_key(key);
+
+	tags[tid].mark_primary();
+
+	tags[tid].set_val(vals[tid]);
+
+
+	//uint64_t hashed_key = my_tcf->hash_key(keys[tid]);
+
+	//key % num_blocks*(1ULL << tag_bits);
+
+	uint64_t bucket_index = my_tcf->get_bucket_from_reference(key);
+	
+						//bucket << 16
+	uint64_t new_key = my_tcf->get_reference_from_bucket(bucket_index) | tags[tid].get_key();
+
+	//buckets are now sortable!
+	keys[tid] = new_key;
+
+
+}
+
+
 __global__ void cast_hits(bool * hits, bool * scrambled_hits, uint64_t * indices, uint64_t nitems){
 
 	uint64_t tid = threadIdx.x+blockIdx.x*blockDim.x;
@@ -171,6 +209,24 @@ __global__ void cast_hits(bool * hits, bool * scrambled_hits, uint64_t * indices
 	if (tid >= nitems) return;
 
 	hits[indices[tid]] = scrambled_hits[tid];
+
+	return;
+
+}
+
+
+//when reading back_values, why not just copy from other buffer?
+//saves us some scrambling lookup time.
+template <typename internal_key_type, typename Val>
+__global__ void cast_hits_values(bool * hits, bool * scrambled_hits, uint64_t * indices, internal_key_type * buffers, Val * vals, uint64_t nitems){
+
+	uint64_t tid = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (tid >= nitems) return;
+
+	hits[indices[tid]] = scrambled_hits[tid];
+
+	vals[indices[tid]] = buffers[tid].get_val();
 
 	return;
 
@@ -924,6 +980,25 @@ __global__ void bulk_sorted_query_kernel(Filter * tcf, bool * hits){
 	tcf->mini_filter_bulk_queries(hits);
 }
 
+template<typename Filter>
+__global__ void bulk_sorted_query_kernel_values(Filter * tcf, bool * hits){
+
+
+	uint64_t tid = threadIdx.x + blockIdx.x*blockDim.x;
+
+	uint64_t teamID = tid / (BLOCK_SIZE);
+
+	#if DEBUG_ASSERTS
+
+	assert(teamID == blockIdx.x);
+
+	#endif
+
+	if (teamID >= tcf->num_teams) return;
+
+	tcf->mini_filter_bulk_queries_values(hits);
+}
+
 
 template<typename Filter>
 __global__ void bulk_sorted_delete_kernel(Filter * tcf, bool * hits){
@@ -1079,6 +1154,22 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 	__host__ void attach_lossy_buffers(uint64_t * large_keys, key_type * compressed_keys, uint64_t nitems, uint64_t ext_num_blocks){
 
 		hash_all_key_purge<bulk_tcf<Key, Val, Wrapper>, key_type><<<(nitems -1)/1024 + 1, 1024>>>(this, large_keys, compressed_keys, nitems);
+
+		thrust::sort_by_key(thrust::device, large_keys, large_keys+nitems, compressed_keys);
+
+
+	
+
+		set_buffers_binary<bulk_tcf<Key, Val, Wrapper>, key_type><<<(ext_num_blocks -1)/1024+1, 1024>>>(this, large_keys, compressed_keys, nitems);
+
+		set_buffer_lens<bulk_tcf<Key, Val, Wrapper>, key_type><<<(ext_num_blocks -1)/1024+1, 1024>>>(this, nitems, compressed_keys);
+
+
+	}
+
+	__host__ void attach_lossy_buffers_vals(uint64_t * large_keys, Val * vals, key_type * compressed_keys, uint64_t nitems, uint64_t ext_num_blocks){
+
+		hash_all_key_purge_values<bulk_tcf<Key, Val, Wrapper>, key_type, Val><<<(nitems -1)/1024 + 1, 1024>>>(this, large_keys, vals, compressed_keys, nitems);
 
 		thrust::sort_by_key(thrust::device, large_keys, large_keys+nitems, compressed_keys);
 
@@ -3157,6 +3248,17 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 
 	}
 
+
+	//
+	__host__ void bulk_query_values(bool * hits, uint64_t ext_num_teams){
+
+
+		bulk_sorted_query_kernel_values<bulk_tcf<Key, Val, Wrapper>><<<ext_num_teams, BLOCK_SIZE>>>(this, hits);
+
+
+
+	}
+
 	__host__ void check_correctness(uint64_t * items, uint64_t nitems){
 
 		uint64_t * final_bucket_ids;
@@ -3515,6 +3617,93 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 
 	}
 
+
+
+	__device__ bool mini_filter_bulk_queries_values(bool * hits){
+
+		__shared__ thread_team_block<block_type> block;
+
+		//uint64_t tid = threadIdx.x + blockDim.x*blockIdx.x;
+
+		uint64_t blockID = blockIdx.x;
+
+		int warpID = threadIdx.x / 32;
+
+		int threadID = threadIdx.x % 32;
+
+
+		if (blockID >= num_teams) return false;
+
+
+
+		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
+
+			block.internal_blocks[i] = blocks[blockID].internal_blocks[i]; 
+			//printf("i: %d\n",i);
+			
+		}
+
+		//separate these pulls so that the queries can be encapsulated
+
+		__syncthreads();
+
+		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
+
+			//global buffer blockID*BLOCKS_PER_THREAD_BLOCK + i
+
+			uint64_t global_buffer = blockID*BLOCKS_PER_THREAD_BLOCK+i;
+
+			uint64_t global_offset = (buffers[global_buffer] - buffers[0]);
+
+			bool * hits_ptr = hits + global_offset;
+
+			//Val * vals_ptr = values + global_offset;
+
+			block.internal_blocks[i].sorted_bulk_query_values(block_counters[global_buffer], threadID, buffers[global_buffer], hits_ptr, buffer_sizes[global_buffer]);
+
+		}
+
+
+		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
+
+			uint64_t global_buffer = blockID*BLOCKS_PER_THREAD_BLOCK+i;
+
+			uint64_t global_offset = (buffers[global_buffer] - buffers[0]);
+
+			bool * hits_ptr = hits + global_offset;
+
+			//Val * vals_ptr = values + global_offset;
+
+			for (int j = threadID; j < buffer_sizes[global_buffer]; j+=32){
+
+				if (!hits_ptr[j]){
+
+					key_type item = buffers[global_buffer][j];
+
+
+
+					int alt_bucket = get_alt_bucket_from_key(item, i) % BLOCKS_PER_THREAD_BLOCK;
+					//int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+					item.mark_secondary();
+
+					if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
+
+					hits_ptr[j] = block.internal_blocks[alt_bucket].binary_search_query_vals(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket], buffers[global_buffer]+j);
+
+					// if (!hits_ptr[j]){
+					// 	printf("Failed to find!\n");
+					// }
+				}
+
+			}
+		}
+
+		__syncthreads();
+
+		return true;
+
+	}
 
 
 

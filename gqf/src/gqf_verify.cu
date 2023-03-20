@@ -382,7 +382,7 @@ int main(int argc, char** argv) {
 	//qf_gpu_launch(&qf, vals, nvals, key_count, nhashbits, nslots);
 
 	QF* dev_qf;
-	qf_malloc_device(&dev_qf, qbits, true);
+	qf_malloc_device(&dev_qf, qbits, 8, 0, true);
 	cudaDeviceSynchronize();
 	auto start = std::chrono::high_resolution_clock::now();
 

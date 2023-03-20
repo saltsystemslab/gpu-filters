@@ -182,7 +182,7 @@ __global__ void speed_query_kernel(QF * gqf, Key * keys, Val * vals, uint64_t nv
 
 
 
-   Val local_val;
+   uint64_t local_val;
 
    if (point_query(gqf, keys[tid], local_val, 0) == 0){
 
@@ -253,7 +253,7 @@ __host__ void point_sawtooth_test(int num_bits, int num_partitions, int num_roun
    //static seed for testing
    QF * gqf;
 
-   qf_malloc_device(&gqf, num_bits, false);
+   qf_malloc_device(&gqf, num_bits, 8, 0, false);
 
    Val * host_vals = generate_data<Val>(items_per_partition);
 
@@ -425,7 +425,7 @@ __host__ void bulk_sawtooth_test(int num_bits, int num_partitions, int num_round
    //static seed for testing
    QF * gqf;
 
-   qf_malloc_device(&gqf, num_bits, true);
+   qf_malloc_device(&gqf, num_bits, 8, 0, true);
 
    Val * host_vals = generate_data<Val>(items_per_partition);
 
@@ -581,7 +581,7 @@ int main(int argc, char** argv) {
 
    point_sawtooth_test<uint64_t, uint8_t>(nbits, num_partitions, num_rounds);
 
-   bulk_sawtooth_test<uint64_t, uint8_t>(nbits, num_partitions, num_rounds);
+   bulk_sawtooth_test<uint64_t, uint64_t>(nbits, num_partitions, num_rounds);
 
    cudaDeviceSynchronize();
 

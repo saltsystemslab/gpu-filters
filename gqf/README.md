@@ -11,7 +11,7 @@ Overview
 API
 --------
 
-* `__host__ void qf_malloc_device(QF** qf, int nbits. bool bulk_config)`: Initializes a new GQF with 2^nbits slots, qf is set to point to the new filter. bulk_config specifies whether or not the system will use locking or bulk inserts.
+* `__host__ void qf_malloc_device(QF** qf, int nbits, int rbits, int vbits, bool bulk_config)`: Initializes a new GQF with `2^nbits` slots, qf is set to point to the new filter. bulk_config specifies whether or not the system will use locking or bulk inserts. `rbits` is the size of remainder tags stored, `vbits` is size of value bits stored.
 * `__host__void qf_destroy_device(QF * qf)`: Free the GQF pointed to by qf.
 
 POINT API
@@ -38,6 +38,11 @@ BULK API
 BULK API (with Values)
 -------
 
+* `__host__ void bulk_insert_values(QF* qf, uint64_t nvals, uint64_t* keys, uint64_t * vals, uint8_t flags)`: insert a bulk set of key / value pairs. Values will be clipped to be vbits.
+* `__host__ void bulk_query_values(QF * qf, uint64_t * keys, uint8_t * vals, bool * hits, uint64_t nvals)`: Retreive value associated with each key. `hits` is a bitvector marking if each item was found.
+* `__host__ void bulk_delete_values(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t * vals, uint8_t flags)`: Delete key / value pairs from the filter.
+
+    
 
 
 
@@ -81,6 +86,8 @@ options for test
  $ ./test -d [gqf,point,sqf,rsqf, bloom] -n [numbits] -v [1 for verbose] -o [outputfile - three files with extensions -inserts.txt, -exists-lookup.txt, -false-lookup.txt] -p [npoints] -f [1 for false-positive reporting]
 ```
 
+To generate the false positive rate for a filter, add the flag `-f`. This calculates the false positive rate per batch, so to see the false positive rate of the filter you must insert all items in one batch. To do this, set the number of points to 1 and the buffer size to be nitems. For example, `./test -n 24 -b 24 -p 1 -f` will print out the false-positive rate of the GQF.
+
 
 options for gqf_verify
 ```bash
@@ -94,6 +101,7 @@ Example Runs
  $ ./test -d gqf -n 28 -p 20 -o results/gqf/28
 ```
 This will test the gqf filter with a dataset of 2^28 items split into 20 batches, with items inserted/queried via bulk methods and the results written into results/gqf/28-inserts.txt, results/gqf/28-exists-lookup.txt, and results/gqf/28-false-lookup.txt.
+
 
 ```bash
  $ ./gqf_verify 26 1 4

@@ -38,7 +38,7 @@ extern inline int gqf_init(uint64_t nbits, uint64_t num_hash_bits, uint64_t buf_
 
 	//seems that we need to fix something here
 	//p qf->metadata->value_bits is 0, idx why
-	qf_malloc_device(& g_quotient_filter, nbits, true);
+	qf_malloc_device(& g_quotient_filter, nbits, 8, 0, true);
 
 
 	return 0;

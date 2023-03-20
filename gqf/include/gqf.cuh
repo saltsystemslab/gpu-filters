@@ -84,31 +84,32 @@ extern "C" {
    /******************************************
 	GQF FUNCTIONS
 	*******************************************/
-	__host__ void qf_malloc_device(QF** qf, int nbits, bool bulk_config);
+	//__host__ void qf_malloc_device(QF** qf, int nbits, bool bulk_config);
+	__host__ void qf_malloc_device(QF** qf, int nbits, int rbits, int vbits, bool bulk_config);
 	__host__ void qf_destroy_device(QF * qf);
 
 
 	/* POINT API */
 
 	//Lock and insert singular items
-	__device__ qf_returns point_insert(QF* qf, uint64_t key, uint8_t value, uint8_t flags);
+	__device__ qf_returns point_insert(QF* qf, uint64_t key, uint64_t value, uint8_t flags);
 
 
 	//combined query and insert
-    __device__ qf_returns point_insert_not_exists(QF* qf, uint64_t key, uint8_t value, uint8_t& returnedVal,  uint8_t flags);
+    __device__ qf_returns point_insert_not_exists(QF* qf, uint64_t key, uint64_t value, uint64_t& returnedVal,  uint8_t flags);
 
     //query an item
-    __device__ uint64_t point_query(QF* qf, uint64_t key, uint8_t& returnedVal, uint8_t flags);
+    __device__ uint64_t point_query(QF* qf, uint64_t key, uint64_t& returnedVal, uint8_t flags);
 
 
     //query an item
-    __device__ uint64_t point_query_count(QF* qf, uint64_t key, uint8_t value, uint8_t flags);
+    __device__ uint64_t point_query_count(QF* qf, uint64_t key, uint64_t value, uint8_t flags);
 
 
     //Lock and query an item
-    __device__ uint64_t point_query_concurrent(QF* qf, uint64_t key, uint8_t& returnedVal, uint8_t flags);
+    __device__ uint64_t point_query_concurrent(QF* qf, uint64_t key, uint64_t& returnedVal, uint8_t flags);
 
-    __device__ int point_delete(QF* qf, uint64_t key, uint8_t value, uint8_t flags);
+    __device__ int point_delete(QF* qf, uint64_t key, uint64_t value, uint8_t flags);
 	
 
 
@@ -137,9 +138,9 @@ extern "C" {
 
 
 	//BULK API with value support
-	__host__ void bulk_insert_values(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t * vals, uint8_t flags);
-	__host__ void bulk_query_values(QF * qf, uint64_t * keys, uint8_t * vals, bool * hits, uint64_t nvals);
-	__host__ void bulk_delete_values(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t * vals, uint8_t flags);
+	__host__ void bulk_insert_values(QF* qf, uint64_t nvals, uint64_t* keys, uint64_t * vals, uint8_t flags);
+	__host__ void bulk_query_values(QF * qf, uint64_t * keys, uint64_t * vals, bool * hits, uint64_t nvals);
+	__host__ void bulk_delete_values(QF* qf, uint64_t nvals, uint64_t* keys, uint64_t * vals, uint8_t flags);
 
 	
 
@@ -167,7 +168,7 @@ extern "C" {
 	
 	//a version of bulk_get used for testing, counts the items not found and returns that count
 	__host__ uint64_t bulk_get_misses_wrapper(QF * qf, uint64_t * vals, uint64_t nvals);
-	__host__ uint64_t bulk_get_exact_misses_wrapper(QF * qf, uint64_t * keys, uint8_t * vals, uint64_t nvals);
+	__host__ uint64_t bulk_get_exact_misses_wrapper(QF * qf, uint64_t * keys, uint64_t * vals, uint64_t nvals);
 
 	__host__ uint64_t bulk_get_hits_wrapper(QF * qf, uint64_t * vals, bool * hits, uint64_t nvals);
 

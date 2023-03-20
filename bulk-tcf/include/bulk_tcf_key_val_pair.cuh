@@ -49,6 +49,8 @@ struct __attribute__ ((__packed__)) wrapper{
 
 	Val val;
 
+	__host__ __device__ wrapper(): val(0) {}
+
 	__host__ __device__ wrapper(Val new_val): val(new_val){}
 
 	__host__ __device__ bool has_value(){ return true;}

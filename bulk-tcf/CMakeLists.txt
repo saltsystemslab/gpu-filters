@@ -37,3 +37,5 @@ target_link_libraries(bulk_tcf INTERFACE ssl crypto)
 ConfigureExecutable(tcf_wrapper_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/tcf_wrapper_tests.cu" "${CMAKE_BINARY_DIR}")
 
 ConfigureExecutable(sawtooth_test "${CMAKE_CURRENT_SOURCE_DIR}/src/sawtooth_test.cu" "${CMAKE_BINARY_DIR}")
+
+ConfigureExecutable(tcf_key_val_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/tcf_key_val_tests.cu" "${CMAKE_BINARY_DIR}")

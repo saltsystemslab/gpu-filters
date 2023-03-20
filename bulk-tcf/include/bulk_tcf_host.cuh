@@ -100,6 +100,28 @@ struct host_bulk_tcf {
 
 	}
 
+
+	__host__ void bulk_insert_values(Large_Keys * large_keys, Val * vals, uint64_t nitems, uint64_t * misses){
+
+		
+
+		internal_key_type * dev_small_keys;
+
+		//this may be very expensive... check cost.
+		cudaMalloc((void **)&dev_small_keys, sizeof(internal_key_type)*nitems);
+
+		dev_tcf->attach_lossy_buffers_vals(large_keys, vals, dev_small_keys, nitems, num_blocks);
+
+		dev_tcf->bulk_insert(misses, num_teams);
+
+		cudaFree(dev_small_keys);
+
+		return;
+
+
+	}
+
+
 	__host__ bool * bulk_query(Large_Keys * host_query_keys, uint64_t nitems){
 		internal_key_type * dev_small_keys;
 
@@ -119,8 +141,6 @@ struct host_bulk_tcf {
 
 		dev_tcf->bulk_query(scrambled_hits, num_teams);
 
-		cudaFree(dev_small_keys);
-
 		bool * return_hits;
 
 		cudaMalloc((void **)&return_hits, sizeof(bool)*nitems);
@@ -128,6 +148,8 @@ struct host_bulk_tcf {
 		cast_hits<<<(nitems-1)/512+1,512>>>(return_hits, scrambled_hits, indices, nitems);
 
 		cudaDeviceSynchronize();
+
+		cudaFree(dev_small_keys);
 
 		cudaFree(scrambled_hits);
 		cudaFree(indices);
@@ -165,11 +187,47 @@ struct host_bulk_tcf {
 
 	}	
 
-	//still needs to be finished
-	__host__ void bulk_query_values(Large_Keys * query_keys, Val * output_buffer, bool * hits, uint64_t nitems){
+	//lookup keys, marking hits and storing values in the output buffer
+	__host__ bool * bulk_query_values(Large_Keys * query_keys, Val * output_buffer, uint64_t nitems){
 
 		//assert only called when running.
 		//assert(!std::is_same<Val, empty>);
+
+
+		internal_key_type * dev_small_keys;
+
+		bool * scrambled_hits;
+
+		cudaMalloc((void **)&scrambled_hits, sizeof(bool)*nitems);
+
+		cudaMemset(scrambled_hits, 0, sizeof(bool)*nitems);
+
+
+		uint64_t * indices;
+
+		cudaMalloc((void **)&dev_small_keys, sizeof(internal_key_type)*nitems);
+		cudaMalloc((void **)&indices, sizeof(uint64_t)*nitems);
+
+
+		dev_tcf->attach_lossy_buffers_recovery(query_keys, indices, dev_small_keys, nitems, num_blocks);
+
+		dev_tcf->bulk_query_values(scrambled_hits, num_teams);
+
+
+		bool * return_hits;
+
+		cudaMalloc((void **)&return_hits, sizeof(bool)*nitems);
+
+		cast_hits_values<internal_key_type, Val><<<(nitems-1)/512+1,512>>>(return_hits, scrambled_hits, indices, dev_small_keys, output_buffer, nitems);
+
+		cudaDeviceSynchronize();
+
+		cudaFree(dev_small_keys);
+		cudaFree(scrambled_hits);
+		cudaFree(indices);
+
+		return return_hits;
+
 
 	}
 

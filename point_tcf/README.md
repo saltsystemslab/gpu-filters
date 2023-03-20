@@ -69,7 +69,7 @@ Building
 --------
 The TCF components are header only, so linking the underlying library is sufficient to include the TCF.
 
-To build the tests, add the flag `-DPOGGERS_BUILD_TESTS=ON` when building.
+Building CMake inside of the directory will add tests.
 
 
 Running Tests
@@ -78,4 +78,5 @@ Running Tests
 Several tests exist to showcase the behavior/performance of the TCF
 
 * `test_cg_variations`: iterate over all of the cooperative group options for the primary table, and record their throughput.
-* 
+* `delete_tests`: test the delete TCF on insertion, query, and deleting 50% of items.
+* `sawtooth_test`: Fill the delete TCF to 90% load factor, then delete items in batches.

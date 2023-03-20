@@ -785,8 +785,8 @@ __host__ __device__ uint64_t static inline find_first_empty_slot(QF *qf, uint64_
 	} while(1);
 
 
-	uint64_t bucket_start_from = start_from/NUM_SLOTS_TO_LOCK;
-	uint64_t end_start_from = from/NUM_SLOTS_TO_LOCK;
+	//uint64_t bucket_start_from = start_from/NUM_SLOTS_TO_LOCK;
+	//uint64_t end_start_from = from/NUM_SLOTS_TO_LOCK;
 
 	//testing without this gate to check if we see speed improvements
 	// if (end_start_from>bucket_start_from+1){
@@ -1468,7 +1468,7 @@ __host__ __device__ static inline uint64_t decode_counter(const QF *qf, uint64_t
 
 //code for approx inserts
 
-__host__ __device__ static inline qf_returns insert1_if_not_exists(QF *qf, __uint64_t hash, uint8_t * value)
+__host__ __device__ static inline qf_returns insert1_if_not_exists(QF *qf, __uint64_t hash, uint64_t * value)
 {
 	uint64_t hash_remainder           = hash & BITMASK(qf->metadata->bits_per_slot);
 	uint64_t hash_bucket_index        = hash >> qf->metadata->bits_per_slot;
@@ -1654,7 +1654,7 @@ __host__ __device__ static inline qf_returns insert1_if_not_exists(QF *qf, __uin
 
 
 
-__device__ static inline qf_returns insert1_if_not_exists_cooperative(QF *qf, __uint64_t hash, uint8_t * value, int warpID)
+__device__ static inline qf_returns insert1_if_not_exists_cooperative(QF *qf, __uint64_t hash, uint64_t * value, int warpID)
 {
 	uint64_t hash_remainder           = hash & BITMASK(qf->metadata->bits_per_slot);
 	uint64_t hash_bucket_index        = hash >> qf->metadata->bits_per_slot;
@@ -1908,7 +1908,7 @@ __device__ static inline qf_returns insert1_if_not_exists_cooperative(QF *qf, __
 
 __host__ __device__ static inline qf_returns insert1(QF *qf, __uint64_t hash, uint8_t runtime_lock)
 {
-	int ret_distance = 0;
+	//int ret_distance = 0;
 	uint64_t hash_remainder           = hash & BITMASK(qf->metadata->bits_per_slot);
 	uint64_t hash_bucket_index        = hash >> qf->metadata->bits_per_slot;
 	uint64_t hash_bucket_block_offset = hash_bucket_index % QF_SLOTS_PER_BLOCK;
@@ -1927,7 +1927,7 @@ __host__ __device__ static inline qf_returns insert1(QF *qf, __uint64_t hash, ui
 		METADATA_WORD(qf, occupieds, hash_bucket_index) |= 1ULL <<
 			(hash_bucket_block_offset % 64);
 
-		ret_distance = 0;
+		//ret_distance = 0;
 		//modify_metadata(&qf->runtimedata->pc_ndistinct_elts, 1);
 		//modify_metadata(&qf->runtimedata->pc_noccupied_slots, 1);
 		//modify_metadata(&qf->runtimedata->pc_nelts, 1);
@@ -2143,7 +2143,7 @@ __host__ __device__ static inline qf_returns insert1(QF *qf, __uint64_t hash, ui
 			shift_remainders(qf, insert_index, empty_slot_index);
 
 			set_slot(qf, insert_index, new_value);
-			ret_distance = insert_index - hash_bucket_index;
+			//ret_distance = insert_index - hash_bucket_index;
 
 			shift_runends(qf, insert_index, empty_slot_index-1, 1);
 			switch (operation) {
@@ -2522,7 +2522,7 @@ __device__ static inline int insert1_cooperative(QF *qf, __uint64_t hash, uint8_
 __host__ __device__ static inline qf_returns insert(QF *qf, __uint64_t hash, uint64_t count, uint8_t
 												 runtime_lock)
 {
-	int ret_distance = 0;
+	//int ret_distance = 0;
 	uint64_t hash_remainder           = hash & BITMASK(qf->metadata->bits_per_slot);
 	uint64_t hash_bucket_index        = hash >> qf->metadata->bits_per_slot;
 	uint64_t hash_bucket_block_offset = hash_bucket_index % QF_SLOTS_PER_BLOCK;
@@ -2563,7 +2563,7 @@ __host__ __device__ static inline qf_returns insert(QF *qf, __uint64_t hash, uin
 			if (!ret)
 				return QF_FULL;
 			//modify_metadata(&qf->runtimedata->pc_ndistinct_elts, 1);
-			ret_distance = runstart_index - hash_bucket_index;
+			//ret_distance = runstart_index - hash_bucket_index;
 		} else { /* Non-empty bucket */
 
 			uint64_t current_remainder, current_count, current_end;
@@ -2584,7 +2584,7 @@ __host__ __device__ static inline qf_returns insert(QF *qf, __uint64_t hash, uin
 				if (!ret)
 					return QF_FULL;
 				//modify_metadata(&qf->runtimedata->pc_ndistinct_elts, 1);
-				ret_distance = (current_end + 1) - hash_bucket_index;
+				//ret_distance = (current_end + 1) - hash_bucket_index;
 				/* Found a counter for this remainder.  Add in the new count. */
 			} else if (current_remainder == hash_remainder) {
 				uint64_t *p = encode_counter(qf, hash_remainder, current_count + count, &new_values[67]);
@@ -2597,7 +2597,7 @@ __host__ __device__ static inline qf_returns insert(QF *qf, __uint64_t hash, uin
 																																					current_end - runstart_index + 1);
 			if (!ret)
 				return QF_FULL;
-			ret_distance = runstart_index - hash_bucket_index;
+			//ret_distance = runstart_index - hash_bucket_index;
 				/* No counter for this remainder, but there are larger
 					 remainders, so we're not appending to the bucket. */
 			} else {
@@ -2612,7 +2612,7 @@ __host__ __device__ static inline qf_returns insert(QF *qf, __uint64_t hash, uin
 				if (!ret)
 					return QF_FULL;
 				//modify_metadata(&qf->runtimedata->pc_ndistinct_elts, 1);
-			ret_distance = runstart_index - hash_bucket_index;
+			//ret_distance = runstart_index - hash_bucket_index;
 			}
 		}
 		METADATA_WORD(qf, occupieds, hash_bucket_index) |= 1ULL << (hash_bucket_block_offset % 64);
@@ -2877,15 +2877,20 @@ __host__ bool qf_free(QF *qf)
 	return false;
 }
 
+// __host__ void qf_malloc_device(QF ** qf, int nbits, bool bulk_config){
+
+
+// 	qf_malloc_device(qf, nbits, 8, 8, bulk_config);
+
+
+// }
 
 //consolidate all of the device construction into one convenient func!
-__host__ void qf_malloc_device(QF** qf, int nbits, bool bulk_config){
+__host__ void qf_malloc_device(QF** qf, int nbits, int rbits, int vbits, bool bulk_config){
 
 
 
 	//bring in compile #define
-	int rbits = 8;
-	int vbits = 8;
 
 	QF host_qf;
 	QF temp_device_qf;
@@ -3140,7 +3145,7 @@ __host__  void qf_set_auto_resize(QF* qf, bool enabled)
 
 
 __host__ __device__ qf_returns qf_insert_not_exists(QF *qf, uint64_t key, uint64_t value, uint64_t count, uint8_t
-							flags, uint8_t * retvalue)
+							flags, uint64_t * retvalue)
 {
 	// We fill up the CQF up to 95% load factor.
 	// This is a very conservative check.
@@ -3212,7 +3217,7 @@ __host__ __device__ qf_returns qf_insert_not_exists(QF *qf, uint64_t key, uint64
 
 
 __device__ qf_returns qf_insert_not_exists_cooperative(QF *qf, uint64_t key, uint64_t value, uint64_t count, uint8_t
-							flags, uint8_t * retvalue, int warpID)
+							flags, uint64_t * retvalue, int warpID)
 {
 	// We fill up the CQF up to 95% load factor.
 	// This is a very conservative check.
@@ -3730,7 +3735,7 @@ __global__ void insert_from_buffers_hashed(QF* qf,  uint64_t evenness){
 
 
 //insert from buffers using prehashed_data
-__global__ void insert_from_buffers_hashed_values(QF* qf,  uint64_t evenness, uint8_t * values){
+__global__ void insert_from_buffers_hashed_values(QF* qf,  uint64_t evenness, uint64_t * values){
 
 
 	//uint64_t num_buffers, uint64_t** buffers, volatile uint64_t * buffer_counts;
@@ -3824,7 +3829,7 @@ __global__ void insert_from_buffers_cooperative(QF* qf, uint64_t evenness){
 	for (uint64_t i =0; i < my_count; i++){
 
 		//assert(keys[absolute_offset+i] == buffers[idx][i]);
-		uint8_t query;
+		uint64_t query;
 
 		qf_returns ret_val = qf_insert_not_exists_cooperative(qf, buffers[idx][i], 0, 1, QF_NO_LOCK | QF_KEY_IS_HASH, &query, warpID);
 
@@ -3957,7 +3962,7 @@ __global__ void delete_from_buffers_hashed(QF* qf, uint64_t evenness){
 }
 
 
-__global__ void delete_from_buffers_hashed_vals(QF* qf, uint64_t evenness, uint8_t * vals){
+__global__ void delete_from_buffers_hashed_vals(QF* qf, uint64_t evenness, uint64_t * vals){
 
 
 	uint64_t idx = 2*(threadIdx.x + blockDim.x * blockIdx.x)+evenness;
@@ -4013,10 +4018,10 @@ __global__ void delete_from_buffers_hashed_vals(QF* qf, uint64_t evenness, uint8
 
 
 
-__device__ qf_returns point_insert_not_exists(QF* qf, uint64_t key, uint8_t value, uint8_t& returnedVal, uint8_t flags){
+__device__ qf_returns point_insert_not_exists(QF* qf, uint64_t key, uint64_t value, uint64_t& returnedVal, uint8_t flags){
 
 
-	uint8_t query;
+	uint64_t query;
 
 
 	if (GET_KEY_HASH(flags) != QF_KEY_IS_HASH) {
@@ -4072,10 +4077,10 @@ __device__ qf_returns point_insert_not_exists(QF* qf, uint64_t key, uint8_t valu
 }
 
 
-__device__ qf_returns point_insert_not_exists_cooperative(QF* qf, uint64_t key, uint8_t value, uint8_t& returnedVal, uint8_t flags, int warpID){
+__device__ qf_returns point_insert_not_exists_cooperative(QF* qf, uint64_t key, uint64_t value, uint64_t& returnedVal, uint8_t flags, int warpID){
 
 
-	uint8_t query;
+	uint64_t query;
 
 
 	if (GET_KEY_HASH(flags) != QF_KEY_IS_HASH) {
@@ -4137,7 +4142,7 @@ __device__ qf_returns point_insert_not_exists_cooperative(QF* qf, uint64_t key, 
 
 }
 
-__device__ int point_delete(QF* qf, uint64_t key, uint8_t value, uint8_t flags){
+__device__ int point_delete(QF* qf, uint64_t key, uint64_t value, uint8_t flags){
 
 
 	if (GET_KEY_HASH(flags) != QF_KEY_IS_HASH) {
@@ -4170,7 +4175,7 @@ __device__ int point_delete(QF* qf, uint64_t key, uint8_t value, uint8_t flags){
 					lock_16(qf->runtimedata->locks, lock_index+1);
 
 					//try finding the item
-					uint64_t query;
+					//uint64_t query;
 					// int query_ret = qf_query(qf, hash, &query, QF_NO_LOCK | QF_KEY_IS_HASH);
 
 					// if (query_ret == 0) printf("Not found\n");
@@ -4195,7 +4200,7 @@ __device__ int point_delete(QF* qf, uint64_t key, uint8_t value, uint8_t flags){
 
 }
 
-__device__ qf_returns point_insert(QF* qf, uint64_t key, uint8_t value, uint8_t flags){
+__device__ qf_returns point_insert(QF* qf, uint64_t key, uint64_t value, uint8_t flags){
 
 
 	if (GET_KEY_HASH(flags) != QF_KEY_IS_HASH) {
@@ -4248,7 +4253,7 @@ __device__ qf_returns point_insert(QF* qf, uint64_t key, uint8_t value, uint8_t 
 
 }
 
-__device__ uint64_t point_query(QF* qf, uint64_t key, uint8_t& returnedVal, uint8_t flags){
+__device__ uint64_t point_query(QF* qf, uint64_t key, uint64_t& returnedVal, uint8_t flags){
 
 
 
@@ -4280,7 +4285,7 @@ __device__ uint64_t point_query(QF* qf, uint64_t key, uint8_t& returnedVal, uint
 }
 
 //get the count of how many times this exact key-val pair has appeared
-__device__ uint64_t point_query_count(QF* qf, uint64_t key, uint8_t value, uint8_t flags){
+__device__ uint64_t point_query_count(QF* qf, uint64_t key, uint64_t value, uint8_t flags){
 
 
 
@@ -4305,7 +4310,7 @@ __device__ uint64_t point_query_count(QF* qf, uint64_t key, uint8_t value, uint8
 
 }
 
-__device__ uint64_t point_query_concurrent(QF* qf, uint64_t key, uint8_t& returnedVal, uint8_t flags){
+__device__ uint64_t point_query_concurrent(QF* qf, uint64_t key, uint64_t& returnedVal, uint8_t flags){
 
 
 
@@ -4369,7 +4374,7 @@ __global__ void point_bulk_get(QF * qf, uint64_t * hashes, uint64_t nitems, uint
 	if (tid >=nitems) return;
 
 
-	uint8_t query;
+	uint64_t query;
 
 
 	//point_query(QF* qf, uint64_t key, uint8_t value, uint8_t& returnedVal, uint8_t flags)
@@ -4392,7 +4397,7 @@ __global__ void point_bulk_get_nocount(QF * qf, uint64_t * hashes, uint64_t nite
 	if (tid >=nitems) return;
 
 
-	uint8_t query;
+	uint64_t query;
 
 
 	//point_query(QF* qf, uint64_t key, uint8_t value, uint8_t& returnedVal, uint8_t flags)
@@ -4436,7 +4441,7 @@ __global__ void bulk_get_cooperative(QF * qf, uint64_t * hashes, uint64_t nitems
 
 		//int ret = qf_insert(qf, buffers[itemID][i], 0, 1, QF_NO_LOCK | QF_KEY_IS_HASH);
 
-		uint8_t query;
+		uint64_t query;
 
 		if (point_query(qf, buffers[itemID][i] % qf->metadata->range, query, QF_NO_LOCK | QF_KEY_IS_HASH) ==0){
 
@@ -4601,7 +4606,7 @@ __global__ void point_bulk_insert_cooperative(QF * qf, uint64_t * hashes, uint64
 
 	if (tid >=nitems) return;
 
-	uint8_t retvalue;
+	uint64_t retvalue;
 	assert(point_insert_not_exists_cooperative(qf, hashes[tid], 0, retvalue, 0, warpID) != QF_FULL);
 
 }
@@ -4679,7 +4684,7 @@ __host__ void bulk_insert(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t flags)
 }
 
 
-__host__ void bulk_insert_values(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t * vals, uint8_t flags) {
+__host__ void bulk_insert_values(QF* qf, uint64_t nvals, uint64_t* keys, uint64_t * vals, uint8_t flags) {
 
 	uint64_t key_block_size = 32;
 	uint64_t key_block = (nvals -1)/key_block_size + 1;
@@ -4883,7 +4888,7 @@ __host__ void bulk_insert_reduce(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t
 
 }
 
-__host__ void bulk_delete_values(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t * vals, uint8_t flags) {
+__host__ void bulk_delete_values(QF* qf, uint64_t nvals, uint64_t* keys, uint64_t * vals, uint8_t flags) {
 
 	uint64_t key_block_size = 32;
 	uint64_t key_block = (nvals -1)/key_block_size + 1;
@@ -5013,7 +5018,7 @@ __global__ void bulk_get_misses(QF * qf, uint64_t * vals,  uint64_t nvals, uint6
 		}
 }
 
-__global__ void bulk_get_exact_misses(QF * qf, uint64_t * keys, uint8_t * vals,  uint64_t nvals, uint64_t key_count, uint64_t * counter, uint8_t flags){
+__global__ void bulk_get_exact_misses(QF * qf, uint64_t * keys, uint64_t * vals,  uint64_t nvals, uint64_t key_count, uint64_t * counter, uint8_t flags){
 
 	uint64_t tid = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -5055,7 +5060,7 @@ __global__ void bulk_query_kernel(QF * qf, uint64_t * keys, bool * hits, uint64_
   if (tid >= nvals) return;
 
 
-  	uint8_t query;
+  	uint64_t query;
 
 		uint64_t count = point_query(qf, keys[tid], query, 0);
 
@@ -5069,7 +5074,7 @@ __global__ void bulk_query_kernel(QF * qf, uint64_t * keys, bool * hits, uint64_
 }
 
 
-__global__ void bulk_query_values_kernel(QF * qf, uint64_t * keys, uint8_t * vals, bool * hits, uint64_t nvals){
+__global__ void bulk_query_values_kernel(QF * qf, uint64_t * keys, uint64_t * vals, bool * hits, uint64_t nvals){
 
 	uint64_t tid = threadIdx.x + blockDim.x * blockIdx.x;
 
@@ -5077,7 +5082,7 @@ __global__ void bulk_query_values_kernel(QF * qf, uint64_t * keys, uint8_t * val
   if (tid >= nvals) return;
 
 
-  	uint8_t query;
+  	uint64_t query;
 
 		uint64_t count = point_query(qf, keys[tid], query, 0);
 
@@ -5115,7 +5120,7 @@ __host__ void bulk_query(QF * qf, uint64_t * vals, bool * hits, uint64_t nvals){
 }
 
 
-__host__ void bulk_query_values(QF * qf, uint64_t * keys, uint8_t * vals, bool * hits, uint64_t nvals){
+__host__ void bulk_query_values(QF * qf, uint64_t * keys, uint64_t * vals, bool * hits, uint64_t nvals){
 
 	bulk_query_values_kernel<<<(nvals -1)/512+1, 512>>>(qf, keys, vals, hits, nvals);
 
@@ -5159,7 +5164,7 @@ __host__ uint64_t bulk_get_misses_wrapper(QF * qf, uint64_t * vals, uint64_t nva
 
 }
 
-__host__ uint64_t bulk_get_exact_misses_wrapper(QF * qf, uint64_t * keys, uint8_t * vals, uint64_t nvals){
+__host__ uint64_t bulk_get_exact_misses_wrapper(QF * qf, uint64_t * keys, uint64_t * vals, uint64_t nvals){
 
 	uint64_t * misses;
 	//this is fine, should never be triggered

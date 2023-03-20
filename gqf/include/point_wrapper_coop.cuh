@@ -29,7 +29,7 @@ extern inline int coop_point_init(uint64_t nbits, uint64_t hash, uint64_t buf_si
 	//seems that we need to fix something here
 	//p qf->metadata->value_bits is 0, idx why
 	//consolidate all of the device construction into one convenient func!
-	qf_malloc_device(&coop_point_quotient_filter, nbits, false);
+	qf_malloc_device(&coop_point_quotient_filter, nbits, 8, 0, false);
 
 	
 

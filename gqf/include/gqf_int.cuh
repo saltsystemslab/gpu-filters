@@ -27,7 +27,7 @@ extern "C" {
    8, 16, 32, or 64 (for optimized versions),
    or other integer <= 56 (for compile-time-optimized bit-shifting-based versions)
 */
-#define QF_BITS_PER_SLOT 16
+#define QF_BITS_PER_SLOT 8
 
 /* Must be >= 6.  6 seems fastest. */
 #define QF_BLOCK_OFFSET_BITS (6)

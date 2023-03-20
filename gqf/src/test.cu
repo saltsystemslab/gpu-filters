@@ -199,7 +199,8 @@ void usage(char *name)
 				 "  -p npoints    [ number of points on the graph.  Default 20 ]\n"
 				 "  -b buf_size   [ log_2 of buffer capacity, default is nslots/npoints ]\n"
 				 "  -d datastruct [ Default bulk] [ bulk | point | bloom | sqf | rsqf ]\n"
-				 "  -f outputfile [ Default gqf. ]\n"
+				 "  -o outputfile [ Default gqf. ]\n"
+				 "  -f            [ Display False Positive rate. ]\n"
 				 "  -e            [ Test and record deletions. Disabled by default]\n",
 				 name);
 }

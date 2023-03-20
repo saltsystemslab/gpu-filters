@@ -47,7 +47,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_COMPILER $ENV{CC})
 set(CMAKE_CXX_COMPILER $ENV{CXX})
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G -g")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}") 
 
 
@@ -58,7 +58,6 @@ set(POGGERS_TESTS_BINARY_DIR "${CMAKE_BINARY_DIR}/tests")
 
 option(POGGERS_BUILD_TESTS "Configure CMake to build tests" OFF)
 
-if(POGGERS_BUILD_TESTS)
-    add_subdirectory(tests)
-endif(POGGERS_BUILD_TESTS)
+
+add_subdirectory(tests)
 

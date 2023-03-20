@@ -654,6 +654,63 @@ struct __attribute__ ((__packed__)) templated_block {
 	}
 
 
+	__device__ void sorted_bulk_query_values(int tag_count, int warpID, Tag_type * items, bool * found, uint64_t nitems){
+
+
+		#if DEBUG_ASSERTS
+
+		assert(assert_sorted<Tag_type>(tags, tag_count));
+		assert(assert_sorted<Tag_type>(items, nitems));
+
+		#endif
+
+		if (tag_count == 0 || nitems == 0) return;
+
+		int left = 0;
+		int right = 0;
+
+
+		while (true){
+
+
+
+			if (items[left] == tags[right]){
+
+				found[left] = true;
+				items[left].set_val(tags[right].get_val());
+
+				left++;
+
+				if (left>=nitems) return;
+
+			} else if (items[left] < tags[right]){
+				found[left] = false;
+				left++;
+
+				if (left>=nitems) return;
+			} else {
+
+
+				right ++;
+
+				if (right >= tag_count){
+
+
+					for (int i = left; i < nitems; i++){
+
+						found[i] = false;
+					}
+
+					return;
+				}
+			}
+		}
+
+
+	}
+
+
+
 	//to delete,
 	__device__ void sorted_bulk_delete(int tag_count, int warpID, Tag_type * items, bool * found, uint64_t nitems){
 
@@ -782,6 +839,62 @@ struct __attribute__ ((__packed__)) templated_block {
 
 		if (lower < fill && tags[lower] == item) return true;
 
+		return false;
+
+
+
+	}
+
+	__device__ bool binary_search_query_vals(Tag_type item, int fill, Tag_type * tag_to_write){
+
+
+		#if DEBUG_ASSERTS
+
+
+
+		assert(assert_sorted<Tag_type>(tags, fill));
+
+
+		#endif
+
+
+		int lower = 0;
+		int upper = fill;
+
+		int index;
+
+		while (upper != lower){
+
+		index = lower + (upper - lower)/2;
+
+
+		Tag_type query_item = tags[index];
+
+		if (query_item < item){
+
+			lower = index+1;
+
+		} else if (query_item > item){
+
+			upper = index;
+
+		} else {
+
+			tag_to_write->set_val(query_item.get_val());
+
+			return true;
+		}
+
+
+		}
+
+		if (lower < fill && tags[lower] == item){
+
+			tag_to_write->set_val(tags[lower].get_val());
+			return true;
+		} 
+
+		tag_to_write->set_val(0);
 		return false;
 
 
