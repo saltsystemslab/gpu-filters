@@ -57,10 +57,127 @@ namespace cg = cooperative_groups;
 //cuda templated globals
 
 
-
-//preserving this for when I destroy the timeline
+//debugging kernels
 template <typename Filter, typename Key_type>
-__global__ void hash_all_key_purge(Filter * my_tcf, uint64_t * large_keys, Key_type * keys, uint64_t nvals){
+__global__ void setup_correctness_kernel(Filter * my_tcf, uint64_t * items, uint64_t * bucket_ids, Key_type * tags, int * alt_bucket_ids, uint64_t nitems){
+
+	uint64_t tid = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (tid>=nitems) return;
+
+
+	uint64_t key = items[tid];
+
+	key = my_tcf->hash_key(key);
+
+	tags[tid].set_key(key);
+
+	uint64_t bucket_index = my_tcf->get_bucket_from_reference(key);
+
+	int remainder = my_tcf->get_alt_bucket_from_key(tags[tid], bucket_index % BLOCKS_PER_THREAD_BLOCK) % BLOCKS_PER_THREAD_BLOCK;
+
+	if (bucket_index % BLOCKS_PER_THREAD_BLOCK == remainder){
+		remainder = (remainder+1) % BLOCKS_PER_THREAD_BLOCK;
+	}
+
+	bucket_ids[tid] = bucket_index;
+
+	alt_bucket_ids[tid] = remainder;
+
+
+
+}
+
+
+template <typename Filter, typename Key_type>
+__global__ void check_correctness_kernel(Filter * my_tcf, uint64_t * bucket_ids, Key_type * tags, int * alt_bucket_ids, uint64_t nitems){
+
+	uint64_t tid = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (tid>=nitems) return;
+
+	uint64_t my_bucket_index = bucket_ids[tid];
+
+	Key_type my_tag = tags[tid];
+
+	int my_alt_bucket = alt_bucket_ids[tid];
+
+
+	for (uint64_t i = 0; i< nitems; i++){
+
+
+		if (bucket_ids[i] == my_bucket_index){
+
+			if (tags[i] == my_tag){
+
+				if (alt_bucket_ids[i] != my_alt_bucket){
+
+					printf("Check failed for indices %llu, %llu\n", tid, i);
+				}
+
+			}
+
+		}
+
+
+
+	}
+
+
+}
+
+
+//sorts the set
+template <typename Filter, typename Key_type>
+__global__ void hash_all_key_purge(Filter * my_tcf, uint64_t * keys, Key_type * tags, uint64_t nvals){
+
+
+	uint64_t tid = threadIdx.x + blockDim.x*blockIdx.x;
+
+	if (tid >= nvals) return;
+
+	uint64_t key = keys[tid];
+
+	//shrink the keys
+	//this is valid and preserves query values.
+
+	key = my_tcf->hash_key(key);
+
+	tags[tid].set_key(key);
+
+	tags[tid].mark_primary();
+
+
+	//uint64_t hashed_key = my_tcf->hash_key(keys[tid]);
+
+	//key % num_blocks*(1ULL << tag_bits);
+
+	uint64_t bucket_index = my_tcf->get_bucket_from_reference(key);
+	
+						//bucket << 16
+	uint64_t new_key = my_tcf->get_reference_from_bucket(bucket_index) | tags[tid].get_key();
+
+	//buckets are now sortable!
+	keys[tid] = new_key;
+
+
+}
+
+
+__global__ void cast_hits(bool * hits, bool * scrambled_hits, uint64_t * indices, uint64_t nitems){
+
+	uint64_t tid = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (tid >= nitems) return;
+
+	hits[indices[tid]] = scrambled_hits[tid];
+
+	return;
+
+}
+
+template <typename Filter, typename Key_type>
+__global__ void hash_all_key_purge_index(Filter * my_tcf, uint64_t * large_keys, uint64_t * indices, Key_type * tags, uint64_t nvals){
 
 
 	uint64_t tid = threadIdx.x + blockDim.x*blockIdx.x;
@@ -69,20 +186,50 @@ __global__ void hash_all_key_purge(Filter * my_tcf, uint64_t * large_keys, Key_t
 
 	uint64_t key = large_keys[tid];
 
+
+	key = my_tcf->hash_key(key);
+
 	//shrink the keys
 	//this is valid and preserves query values.
-	keys[tid].set_key(large_keys[tid]);
+	tags[tid].set_key(key);
+
+	tags[tid].mark_primary();
 
 
 	//uint64_t hashed_key = my_tcf->hash_key(large_keys[tid]);
 
-	key = my_tcf->get_bucket_from_key(key);
+	uint64_t bucket_index = my_tcf->get_bucket_from_reference(key);
 
-	uint64_t new_key = my_tcf->get_reference_from_bucket(key) | keys[tid].get_key();
+	uint64_t new_key = my_tcf->get_reference_from_bucket(bucket_index) | tags[tid].get_key();
+
+	//quick assertion check
+
+	// Key_type old_key = keys[tid];
+
+	// keys[tid].set_key(new_key);
+
+	// if (old_key != keys[tid]){
+	// 	printf("Conversion err\n");
+	// }
 
 	//buckets are now sortable!
 	large_keys[tid] = new_key;
 
+	indices[tid] = tid;
+
+
+}
+	
+//overwrite the old keys with new ones from the current list.
+template <typename Filter, typename Key_type>
+__global__ void associate_keys_with_indices(Filter * my_tcf, uint64_t * large_keys, Key_type * keys, uint64_t nvals){
+
+	uint64_t tid = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if (tid >=nvals) return;
+
+	//is this valid
+	keys[tid].set_key(large_keys[tid]);
 
 }
 
@@ -107,7 +254,7 @@ __global__ void new_hash_all_key_purge(Filter * my_tcf, uint64_t * large_keys, K
 
 	//uint64_t hashed_key = my_tcf->hash_key(large_keys[tid]);
 
-	//key = my_tcf->get_bucket_from_key(key);
+	//key = my_tcf->hash_key(key);
 
 	//uint64_t new_key = my_tcf->get_reference_from_bucket(key) | keys[tid].get_key();
 
@@ -132,7 +279,7 @@ __global__ void hash_all_key_purge_static(uint64_t * large_keys, Key_type * keys
 	keys[tid] = (Key_type) large_keys[tid];
 
 
-	key = Filter::static_get_bucket_from_key(key, ext_num_blocks);
+	key = Filter::static_hash_key(key, ext_num_blocks);
 
 	uint64_t new_key = Filter::static_get_reference_from_bucket(key) | keys[tid].get_key();
 
@@ -145,21 +292,21 @@ __global__ void hash_all_key_purge_static(uint64_t * large_keys, Key_type * keys
 
 
 
-template<typename Filter, typename Key_type>
-__global__ void hash_all_keys(Filter * my_tcf, uint64_t * keys, uint64_t nvals){
+// template<typename Filter, typename Key_type>
+// __global__ void hash_all_keys(Filter * my_tcf, uint64_t * keys, uint64_t nvals){
 
-	uint64_t tid = threadIdx.x + blockDim.x*blockIdx.x;
+// 	uint64_t tid = threadIdx.x + blockDim.x*blockIdx.x;
 
-	if (tid >= nvals) return;
+// 	if (tid >= nvals) return;
 
-	uint64_t key = keys[tid];
+// 	uint64_t key = keys[tid];
 
-	uint64_t hash = my_tcf->get_bucket_from_key(key);
+// 	uint64_t hash = my_tcf->hash_key(key);
 
-	uint64_t new_key = my_tcf->get_reference_from_bucket(hash) | key;
+// 	uint64_t new_key = my_tcf->get_reference_from_bucket(hash) | key;
 
-	keys[tid] = new_key;
-}
+// 	keys[tid] = new_key;
+// }
 
 
 template <typename Filter, typename Key_type>
@@ -176,7 +323,7 @@ __global__ void hash_all_key_purge_cycles(Filter * my_tcf, uint64_t * vals, Key_
 
 	keys[tid] = (Key_type) vals[tid];
 
-	key = my_tcf->get_bucket_from_key(key);
+	key = my_tcf->hash_key(key);
 
 	uint64_t new_key = my_tcf->get_reference_from_bucket(key) | keys[tid].get_key();
 
@@ -886,6 +1033,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 	}
 
+
 	//static version of the code
 	//for large filters,
 	//we need to presort the data
@@ -933,6 +1081,25 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 		hash_all_key_purge<bulk_tcf<Key, Val, Wrapper>, key_type><<<(nitems -1)/1024 + 1, 1024>>>(this, large_keys, compressed_keys, nitems);
 
 		thrust::sort_by_key(thrust::device, large_keys, large_keys+nitems, compressed_keys);
+
+
+	
+
+		set_buffers_binary<bulk_tcf<Key, Val, Wrapper>, key_type><<<(ext_num_blocks -1)/1024+1, 1024>>>(this, large_keys, compressed_keys, nitems);
+
+		set_buffer_lens<bulk_tcf<Key, Val, Wrapper>, key_type><<<(ext_num_blocks -1)/1024+1, 1024>>>(this, nitems, compressed_keys);
+
+
+	}
+
+
+	__host__ void attach_lossy_buffers_recovery(uint64_t * large_keys, uint64_t * offsets, key_type * compressed_keys, uint64_t nitems, uint64_t ext_num_blocks){
+
+		hash_all_key_purge_index<bulk_tcf<Key, Val, Wrapper>, key_type><<<(nitems -1)/1024 + 1, 1024>>>(this, large_keys, offsets, compressed_keys, nitems);
+
+		thrust::sort_by_key(thrust::device, large_keys, large_keys+nitems, offsets);
+
+		associate_keys_with_indices<bulk_tcf<Key, Val, Wrapper>, key_type><<<(nitems -1)/1024 + 1, 1024>>>(this, large_keys, compressed_keys, nitems);
 
 
 	
@@ -1022,15 +1189,15 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 	//this hash is destructive, despite only being used in one place.
 	//device functions
-	__device__ uint64_t get_bucket_from_key(uint64_t key){
+	// __device__ uint64_t hash_key(uint64_t key){
 
-		//key = MurmurHash64A(((void *)&key), sizeof(key), 42) % (num_blocks);
+	// 	//key = MurmurHash64A(((void *)&key), sizeof(key), 42) % (num_blocks);
 
-		key = hash_64(key, ~0ULL) % (num_blocks);
+	// 	key = hash_64(key, ~0ULL) % (num_blocks);
 
-		return key;
+	// 	return key;
 
-	}
+	// }
 
 	__device__ uint64_t get_bucket_from_hash(uint64_t hash){
 
@@ -1111,7 +1278,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 	}
 
 	//does this fuck it up?
-	__device__ static uint64_t static_get_bucket_from_key(uint64_t key, uint64_t ext_num_blocks){
+	__device__ static uint64_t static_hash_key(uint64_t key, uint64_t ext_num_blocks){
 
 		//key = MurmurHash64A(((void *)&key), sizeof(key), 42) % (ext_num_blocks);
 
@@ -1129,7 +1296,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 		//return new_hash & new_bucket; 
 
-		return (bucket ^ key.get_key());
+		return (bucket ^ (key.get_key()* 0x5bd1e995));
 	}
 
 		//device functions
@@ -1140,7 +1307,8 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 		if constexpr (key_size >= 64) return key % num_blocks;
 		
-		return key >> (8ULL *sizeof(Key));
+
+		return (key >> (8ULL *sizeof(Key))) % num_blocks;
 
 	}
 
@@ -1151,7 +1319,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 		if constexpr (key_size >= 64) return key % ext_num_blocks;
 		
-		return key >> (8ULL *sizeof(Key));
+		return (key >> (8ULL *sizeof(Key)) ) % ext_num_blocks;
 
 	}
 
@@ -1312,10 +1480,8 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 			block.internal_blocks[i] = blocks[blockIdx.x].internal_blocks[i];
 
-
-
-
-			buffer_get_primary_count(&block, (int *) &offsets[0], blockID, i, warpID, threadID);
+			//prime the offsets
+			buffer_get_primary_count(&block, (int *) &offsets[0], blockID, i, threadID);
 
 
 
@@ -1374,7 +1540,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 
 
-			buffer_get_primary_count(&block, (int *) &offsets[0], blockID, i, warpID, threadID);
+			buffer_get_primary_count(&block, (int *) &offsets[0], blockID, i, threadID);
 
 
 		}
@@ -1418,7 +1584,8 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 	}
 
 
-	__device__ void buffer_get_primary_count(thread_team_block<block_type> * local_blocks, int * counters, uint64_t blockID, int warpID, int block_warpID, int threadID){
+
+	__device__ void buffer_get_primary_count(thread_team_block<block_type> * local_blocks, int * counters, uint64_t blockID, int warpID, int threadID){
 
 
 		#if DEBUG_ASSERTS
@@ -1433,7 +1600,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 		uint64_t global_buffer = blockID * BLOCKS_PER_THREAD_BLOCK + warpID;
 
-		assert(assert_sorted(buffers[global_buffer],buffer_sizes[global_buffer]));
+		//assert(assert_sorted(buffers[global_buffer],buffer_sizes[global_buffer]));
 
 		#if DEBUG_ASSERTS
 
@@ -1504,12 +1671,16 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 		int slot;
 
+
+		//loop through blocks
 		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
 
 
 			//for each item in parallel, we check the global counters to determine which hash is submitted
 			uint64_t global_buffer = blockID*BLOCKS_PER_THREAD_BLOCK + i;
 
+
+			//offsets is the # of items pulled by shortcutting
 			int remaining = buffer_sizes[global_buffer] - offsets[i];
 
 			for (int j = threadID; j < remaining; j+=32){
@@ -1519,7 +1690,10 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 				//uint64_t  = get_alt_hash(hash, global_buffer);
 
-				int alt_bucket = get_alt_bucket_from_key(hash, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+				int alt_bucket = get_alt_bucket_from_key(hash, i) % BLOCKS_PER_THREAD_BLOCK;
+				//int alt_bucket = get_alt_bucket_from_key(hash, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
 
 				if (alt_bucket == i) alt_bucket = (alt_bucket + 1) % BLOCKS_PER_THREAD_BLOCK;
 
@@ -1549,6 +1723,17 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 						//slot - offset = fill+#writes - this is guaranteed to be a free slot
 						slot -= offsets[i];
 
+						#if DEBUG_ASSERTS
+
+						//this kind of overwrite is ok when deleting...
+						//since we compress and just write out the compressed version
+						//with the correct count we are essentially overwriting useless data.
+						if (local_blocks->internal_blocks[i].tags[slot].get_key() != 0){
+							printf("Overwrite!\n");
+						}
+
+						#endif
+
 						local_blocks->internal_blocks[i].tags[slot] = hash;
 					
 
@@ -1571,7 +1756,18 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 							slot -= offsets[alt_bucket];
 
 
+							#if DEBUG_ASSERTS
+
+							if (local_blocks->internal_blocks[alt_bucket].tags[slot].get_key() != 0){
+								printf("Overwrite!\n");
+							}
+
+							#endif
+
+
 							local_blocks->internal_blocks[alt_bucket].tags[slot] = hash;
+
+							local_blocks->internal_blocks[alt_bucket].tags[slot].mark_secondary();
 
 							#if DEBUG_ASSERTS
 
@@ -1604,8 +1800,19 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 						//temp_tags[alt_bucket*block_type::max_size()+slot] = hash & 0xff;
 
+						#if DEBUG_ASSERTS
+
+						if (local_blocks->internal_blocks[alt_bucket].tags[slot].get_key() != 0){
+							printf("Overwrite!\n");
+						}
+
+						#endif
+
 
 						local_blocks->internal_blocks[alt_bucket].tags[slot] = hash;
+
+						local_blocks->internal_blocks[alt_bucket].tags[slot].mark_secondary();
+
 
 						#if DEBUG_ASSERTS
 
@@ -1625,6 +1832,15 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 							slot -= offsets[i];
 
 							//temp_tags[i*block_type::max_size()+slot] = hash & 0xff;
+
+
+							#if DEBUG_ASSERTS
+
+							if (local_blocks->internal_blocks[i].tags[slot].get_key() != 0){
+								printf("Overwrite!\n");
+							}
+
+							#endif
 
 
 							local_blocks->internal_blocks[i].tags[slot] = hash;
@@ -1666,7 +1882,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 		__syncthreads();
 
-
+		//no overwrite in above statement.
 
 
 		//start of dump
@@ -1681,14 +1897,8 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 			}
 
 			#if DEBUG_ASSERTS
-
-			if (counters[i] >  block_type::max_size()){
-
-				counters[i] =  block_type::max_size();
-
-				assert(counters[i] <=  block_type::max_size());
-			}
 			
+			assert(counters[i] <=  block_type::max_size());
 
 			#endif
 
@@ -1704,7 +1914,10 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 			#if DEBUG_ASSERTS
 
+
 			if (length + local_block_offset + offsets[i] >  block_type::max_size()){
+
+				printf("length violation\n");
 
 				assert(length + local_block_offset + offsets[i] <=  block_type::max_size());
 
@@ -1713,6 +1926,7 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 
 			if (! (counters[i] <=  block_type::max_size())){
 
+					printf("Counter size violation\n");
 					//start_counters[i] -1
 					assert(counters[i] <=  block_type::max_size());
 
@@ -1745,64 +1959,79 @@ struct __attribute__ ((__packed__)) bulk_tcf {
 			int tag_fill = local_block_offset;
 
 
+			templated_insertion_sort<Key, Val, Wrapper>(&local_blocks->internal_blocks[i].tags[tag_fill], length, threadID);
+
+			__syncwarp();
+
+
+			#if DEBUG_ASSERTS
+
+				if (!assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], length)){
+						printf("Sort failed For insertion_sort!\n");
+				}
+
+			#endif
+
 			//start of 16 bit
 
-			if (length <= 32){
+			// if (length <= 32){
 
-				#if DEBUG_ASSERTS
+			// 	#if DEBUG_ASSERTS
 
-					assert(tag_fill + length <= block_type::max_size());
+			// 		assert(tag_fill + length <= block_type::max_size());
 
-				#endif
-
-
-				sorting_network<Key, Val, Wrapper>(&local_blocks->internal_blocks[i].tags[tag_fill], length, threadID);
-
-				__syncwarp();
+			// 	#endif
 
 
-				#if DEBUG_ASSERTS
+			// 	sorting_network<Key, Val, Wrapper>(&local_blocks->internal_blocks[i].tags[tag_fill], length, threadID);
 
-				//TODO PATCH SORTING NETWORK
-
-
-				assert(assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], length));
-
-				#endif
-
-			} else {
+			// 	__syncwarp();
 
 
-				#if DEBUG_ASSERTS
+			// 	#if DEBUG_ASSERTS
 
-					assert(tag_fill + length <= block_type::max_size());
+			// 	//TODO PATCH SORTING NETWORK
 
-				#endif
+			// 	if (!assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], length)){
+			// 		printf("Sort failed!\n");
+			// 	}
+			// 	assert(assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], length));
+
+			// 	#endif
+
+			// } else {
 
 
-				if (threadID ==0)
+			// 	#if DEBUG_ASSERTS
 
-				insertion_sort<key_type>(&local_blocks->internal_blocks[i].tags[tag_fill], length);
+			// 		assert(tag_fill + length <= block_type::max_size());
+
+			// 	#endif
+
+
+			// 	if (threadID ==0)
+
+			// 	insertion_sort<key_type>(&local_blocks->internal_blocks[i].tags[tag_fill], length);
 
 		
 
-				__syncwarp();
+			// 	__syncwarp();
 
-				sorting_network(&local_blocks->internal_blocks[i].tags[tag_fill], 32, threadID);
+			// 	sorting_network(&local_blocks->internal_blocks[i].tags[tag_fill], 32, threadID);
 
-				__syncwarp();
-
-
-				#if DEBUG_ASSERTS
+			// 	__syncwarp();
 
 
-				assert(assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], 32));
+			// 	#if DEBUG_ASSERTS
 
-				assert(assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], length));
 
-				#endif
+			// 	assert(assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], 32));
 
-			}
+			// 	assert(assert_sorted(&local_blocks->internal_blocks[i].tags[tag_fill], length));
+
+			// 	#endif
+
+			// }
 
 			//end of 16 bit
 
@@ -1991,7 +2220,8 @@ __device__ void dump_all_buffers_sorted_cycles(thread_team_block<block_type> * l
 
 				//uint64_t  = get_alt_hash(hash, global_buffer);
 
-				int alt_bucket = get_alt_bucket_from_key(hash, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+				int alt_bucket = get_alt_bucket_from_key(hash, i) % BLOCKS_PER_THREAD_BLOCK;
+				//int alt_bucket = get_alt_bucket_from_key(hash, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
 
 				if (alt_bucket == i) alt_bucket = (alt_bucket + 1) % BLOCKS_PER_THREAD_BLOCK;
 
@@ -2494,7 +2724,8 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 
 				//uint64_t  = get_alt_hash(hash, global_buffer);
 
-				int alt_bucket = get_alt_bucket_from_key(hash, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+				int alt_bucket = get_alt_bucket_from_key(hash, i) % BLOCKS_PER_THREAD_BLOCK;
+				//int alt_bucket = get_alt_bucket_from_key(hash, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
 
 				if (alt_bucket == i) alt_bucket = (alt_bucket + 1) % BLOCKS_PER_THREAD_BLOCK;
 
@@ -2926,6 +3157,38 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 
 	}
 
+	__host__ void check_correctness(uint64_t * items, uint64_t nitems){
+
+		uint64_t * final_bucket_ids;
+
+		cudaMalloc((void **)&final_bucket_ids, nitems*sizeof(uint64_t));
+
+		key_type * tags;
+
+		cudaMalloc((void **)&tags, nitems*sizeof(key_type));
+
+		int * alt_bucket;
+
+		cudaMalloc((void **)&alt_bucket, nitems*sizeof(int));
+
+		setup_correctness_kernel<bulk_tcf<Key, Val, Wrapper>, key_type><<<(nitems-1)/512+1, 512>>>(this, items, final_bucket_ids, tags, alt_bucket, nitems);
+
+		cudaDeviceSynchronize();
+
+		check_correctness_kernel<bulk_tcf<Key, Val, Wrapper>, key_type><<<(nitems-1)/512+1, 512>>>(this, final_bucket_ids, tags, alt_bucket, nitems);
+
+		cudaDeviceSynchronize();
+
+		cudaFree(final_bucket_ids);
+
+		cudaFree(tags);
+
+		cudaFree(alt_bucket);
+
+
+
+	}
+
 
 	__host__ void bulk_delete(bool * hits, uint64_t ext_num_teams){
 
@@ -2969,9 +3232,60 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 			
 		}
 
+		//keys coming in are identical. - this is expected.
+
+		//therefore...
+		//either first delete removes items it should not remove.
+		//*or* insert did not properly insert.
+
 		//separate these pulls so that the queries can be encapsulated
 
 		__syncthreads();
+
+		#if DEBUG_ASSERTS
+
+		//debug code
+		//first off, all tags should be findable
+		for (int i = warpID; i< BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
+
+			uint64_t global_buffer = blockID*BLOCKS_PER_THREAD_BLOCK+i;
+
+			uint64_t global_offset = (buffers[global_buffer] - buffers[0]);
+
+			bool * hits_ptr = hits + global_offset;
+
+			if (threadID == 0){
+
+				for (int j = 0; j < buffer_sizes[global_buffer]; j+=1){
+
+						key_type item = buffers[global_buffer][j];
+
+						int alt_bucket = get_alt_bucket_from_key(item, i) % BLOCKS_PER_THREAD_BLOCK;
+						//int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+						if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
+
+						bool primary_found = block.internal_blocks[i].query_search_linear(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i]);
+							
+
+						item.mark_secondary();
+						bool alt_found = block.internal_blocks[alt_bucket].query_search_linear(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket]);
+
+						if (!(primary_found || alt_found)){
+							printf("Bug in delete query\n");
+						}
+
+						// if (primary_found && alt_found){
+						// 	printf("Potential issue\n");
+						// }
+
+				}
+			}
+		}
+
+		__syncthreads();
+
+		#endif
 
 		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
 
@@ -2985,10 +3299,83 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 
 			block.internal_blocks[i].sorted_bulk_delete(block_counters[global_buffer], threadID, buffers[global_buffer], hits_ptr, buffer_sizes[global_buffer]);
 
+			// if (threadID == 0){
+
+			// 	for (int j = 0; j < buffer_sizes[global_buffer]; j += 1){
+
+			// 		key_type item = buffers[global_buffer][j];
+
+			// 		hits_ptr[j] = block.internal_blocks[i].individual_delete(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i]);
+
+			// 	}
+
+			// }	
+
 		}
+
 
 		//stop double write bug
 		__syncthreads();
+
+
+		#if DEBUG_ASSERTS
+
+		//anyone remaining should only be in secondary bucket?
+
+
+		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
+
+
+			uint64_t global_buffer = blockID*BLOCKS_PER_THREAD_BLOCK+i;
+
+			uint64_t global_offset = (buffers[global_buffer] - buffers[0]);
+
+			bool * hits_ptr = hits + global_offset;
+
+			if (threadID == 0){
+
+				for (int j = 0; j < buffer_sizes[global_buffer]; j+=1){
+
+						if (hits_ptr[j]) continue;
+
+						//printf("Entering check\n");
+
+						key_type item = buffers[global_buffer][j];
+
+						//int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+						int alt_bucket = get_alt_bucket_from_key(item, i) % BLOCKS_PER_THREAD_BLOCK;
+
+						if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
+
+						
+
+						bool primary_found = block.internal_blocks[i].query_search_linear(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i]);
+						
+						item.mark_secondary();
+						bool alt_found = block.internal_blocks[alt_bucket].query_search_linear(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket]);
+
+						//I wanted to be deleted and index wanted to delete me, why did this fail?
+						if (primary_found){
+							printf("Issue in search, primary not properly deleted.\n");
+						}
+
+
+						if (!(primary_found || alt_found)){
+							printf("Not found in either after first delete\n");
+						}
+
+				}
+			}
+
+
+		}
+
+
+
+		__syncthreads();
+
+		#endif
 
 
 		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
@@ -2999,26 +3386,104 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 
 			bool * hits_ptr = hits + global_offset;
 
+			if (threadID == 0){
 
-			for (int j = threadID; j < buffer_sizes[global_buffer]; j+=32){
+				for (int j = 0; j < buffer_sizes[global_buffer]; j+=1){
 
-				if (!hits_ptr[j]){
+					if (!hits_ptr[j]){
 
-					key_type item = buffers[global_buffer][j];
+						key_type item = buffers[global_buffer][j];
 
-					int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+						int alt_bucket = get_alt_bucket_from_key(item, i) % BLOCKS_PER_THREAD_BLOCK;
+						//int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
 
-					if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
 
-					hits_ptr[j] = block.internal_blocks[alt_bucket].individual_delete(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket]);
+						item.mark_secondary();
+
+
+						if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
+
+						hits_ptr[j] = block.internal_blocks[alt_bucket].individual_delete(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket]);
+					}
+
 				}
 
+
 			}
+
+			// for (int j = threadID; j < buffer_sizes[global_buffer]; j+=32){
+
+			// 	if (!hits_ptr[j]){
+
+			// 		key_type item = buffers[global_buffer][j];
+
+			// 		int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+			// 		if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
+
+			// 		hits_ptr[j] = block.internal_blocks[alt_bucket].individual_delete(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket]);
+			// 	}
+
+			// }
 		}
 
 
 		//finally, compress and write out.
 		__syncthreads();
+
+		#if DEBUG_ASSERTS
+
+		//second set of queries
+
+		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
+
+
+			uint64_t global_buffer = blockID*BLOCKS_PER_THREAD_BLOCK+i;
+
+			uint64_t global_offset = (buffers[global_buffer] - buffers[0]);
+
+			bool * hits_ptr = hits + global_offset;
+
+			if (threadID == 0){
+
+				for (int j = 0; j < buffer_sizes[global_buffer]; j+=1){
+
+						if (hits_ptr[j]) continue;
+
+						//printf("Entering check\n");
+
+						key_type item = buffers[global_buffer][j];
+
+						//int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+						int alt_bucket = get_alt_bucket_from_key(item, i) % BLOCKS_PER_THREAD_BLOCK;
+
+						if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
+
+						bool primary_found = block.internal_blocks[i].query_search_linear(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i]);
+						
+
+						item.mark_secondary();
+						bool alt_found = block.internal_blocks[alt_bucket].query_search_linear(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket]);
+
+						if (!(primary_found || alt_found)){
+							printf("After query, not found in either\n");
+						}
+
+						if (primary_found && alt_found){
+							printf("Found in both after deletes?\n");
+						}
+
+				}
+			}
+
+
+		}
+
+
+		__syncthreads();
+
+		#endif
 
 		for (int i = warpID; i < BLOCKS_PER_THREAD_BLOCK; i+=WARPS_PER_BLOCK){
 
@@ -3026,8 +3491,23 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 			int new_counter = blocks[blockID].internal_blocks[i].dump_buffer_compress(block.internal_blocks[i].tags, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i], warpID, threadID, dividing_line);
 
 			if (threadID == 31){
+
+				//printf("Old is %d ,new is %d\n", block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i], new_counter);
+
+				// if (block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i] != new_counter){
+				// 	printf("Deleting existing 0\n");
+				// }
 				block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i] = new_counter;
 			}
+
+
+			#if DEBUG_ASSERTS
+			if(!assert_sorted(blocks[blockID].internal_blocks[i].tags, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+i])){
+				printf("Bug, not sorted after delete\n");
+			}
+
+			#endif
+
 
 		}
 
@@ -3096,11 +3576,20 @@ __device__ void dump_all_buffers_into_local_block(thread_team_block<block_type> 
 
 					key_type item = buffers[global_buffer][j];
 
-					int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+
+					int alt_bucket = get_alt_bucket_from_key(item, i) % BLOCKS_PER_THREAD_BLOCK;
+					//int alt_bucket = get_alt_bucket_from_key(item, global_buffer) % BLOCKS_PER_THREAD_BLOCK;
+
+					item.mark_secondary();
 
 					if (alt_bucket == i) alt_bucket = (alt_bucket +1) % BLOCKS_PER_THREAD_BLOCK;
 
 					hits_ptr[j] = block.internal_blocks[alt_bucket].binary_search_query(item, block_counters[blockID*BLOCKS_PER_THREAD_BLOCK+alt_bucket]);
+
+					// if (!hits_ptr[j]){
+					// 	printf("Failed to find!\n");
+					// }
 				}
 
 			}
@@ -3230,6 +3719,7 @@ __host__ bulk_tcf<Key, Val, Wrapper> * build_tcf(uint64_t nitems){
 
 	cudaMalloc((void **)& blocks, num_teams*sizeof(thread_team_block<block_type>));
 
+	cudaMemset(blocks, 0, num_teams*sizeof(thread_team_block<block_type>));
 
 	host_tcf->blocks = blocks;
 

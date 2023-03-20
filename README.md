@@ -12,7 +12,6 @@ FEATURES
 2) Bulk Two Choice Filter (Bulk TCF)
 	- A TCF implementation optimized for bulk data. Uses Thrust to efficiently group keys for operations.
 
-
 3) GPU Quotient Filter (GQF)
 	- A Counting Quotient Filter implementation on the GPU
 	- supports insertions, queries, deletions, key-value assocation, and counting.
@@ -32,7 +31,7 @@ To add CPM, add
 
 to your cmake file.
 
-To add poggers, include the following snippet and select a version.
+To add the GPU filters, include the following snippet and select a version.
 
 If you remove the version tag, CPM will pull the most up-to-date build.
 
@@ -53,9 +52,7 @@ To cache the library, specify a download folder:
 Building Tests
 --------------
 
-There are a series of optional tests that can be included with the build.
-
-To build the tests, specify the ```-DBUILD_TESTS=ON``` flag to CMake.
+Each filter has it's own battery of tests, along with a README that specifies how to build and run the tests.
 
 
 

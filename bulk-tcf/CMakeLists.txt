@@ -23,7 +23,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_COMPILER $ENV{CC})
 set(CMAKE_CXX_COMPILER $ENV{CXX})
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G -g")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}") 
 
 
@@ -34,5 +34,6 @@ target_include_directories(bulk_tcf INTERFACE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(bulk_tcf INTERFACE ssl crypto)
 
 
-ConfigureExecutable(batched_template_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/batched_template_tests.cu" "${CMAKE_BINARY_DIR}")
-ConfigureExecutable(presorted_template_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/presorted_template_tests.cu" "${CMAKE_BINARY_DIR}")
+ConfigureExecutable(tcf_wrapper_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/tcf_wrapper_tests.cu" "${CMAKE_BINARY_DIR}")
+
+ConfigureExecutable(sawtooth_test "${CMAKE_CURRENT_SOURCE_DIR}/src/sawtooth_test.cu" "${CMAKE_BINARY_DIR}")

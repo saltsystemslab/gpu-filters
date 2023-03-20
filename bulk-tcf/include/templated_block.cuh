@@ -129,6 +129,31 @@ struct __attribute__ ((__packed__)) templated_block {
 
 		//start of merge
 
+		//mark_parity - global is primary
+
+		//secondary is secondary
+
+		//can't happen here
+		//as secondary can contain items from primary.
+		// for (int i = warpID; i < buffer_count; i+=32){
+		// 	global_buffer[i].mark_primary();
+		// }
+
+		// for (int i = warpID; i < secondary_nitems; i+=32){
+		// 	secondary[i].mark_secondary();
+		// }
+
+		__syncwarp();
+
+
+		#if DEBUG_ASSERTS
+
+		assert(assert_sorted<Tag_type>(global_buffer, buffer_count));
+		assert(assert_sorted<Tag_type>(primary, primary_nitems));
+		assert(assert_sorted<Tag_type>(secondary, secondary_nitems));
+
+
+		#endif
 
 		buffer_counters[teamID*32+warpID] = 0;	
 
@@ -370,6 +395,85 @@ struct __attribute__ ((__packed__)) templated_block {
 
 		assert(assert_sorted<Tag_type>(tags, buffer_count+primary_nitems+secondary_nitems));
 
+
+		
+
+		#endif
+
+		//can all items in the original lists be found?
+		//destroy them to find out!
+
+		#if DESTRUCTIVE_CHECK
+
+		if (warpID !=0) return;
+
+		for (int i =0; i< buffer_count; i++){
+
+			bool found = false;
+			for (int j = 0; j < buffer_count+primary_nitems+secondary_nitems; j++){
+
+				if (global_buffer[i].get_key() == tags[j].get_key()){
+
+					global_buffer[i].set_key_empty();
+					tags[j].set_key_empty();
+					found = true;
+					break;
+
+				}
+
+			}
+
+			if (!found){
+				printf("Failed to find from global_buffer\n");
+			}
+
+		}
+
+
+		for (int i =0; i< primary_nitems; i++){
+
+			bool found = false;
+			for (int j = 0; j < buffer_count+primary_nitems+secondary_nitems; j++){
+
+				if (primary[i].get_key() == tags[j].get_key()){
+
+					primary[i].set_key_empty();
+					tags[j].set_key_empty();
+					found = true;
+					break;
+
+				}
+
+			}
+
+			if (!found){
+				printf("Failed to find from primary\n");
+			}
+
+		}
+
+		for (int i =0; i< secondary_nitems; i++){
+
+			bool found = false;
+			for (int j = 0; j < buffer_count+primary_nitems+secondary_nitems; j++){
+
+				if (secondary[i].get_key() == tags[j].get_key()){
+
+					secondary[i].set_key_empty();
+					tags[j].set_key_empty();
+					found = true;
+					break;
+
+				}
+
+			}
+
+			if (!found){
+				printf("Failed to find from secondary\n");
+			}
+
+		}
+
 		#endif
 
 		return;
@@ -388,7 +492,8 @@ struct __attribute__ ((__packed__)) templated_block {
 
 		__shared__ int buffer_counters [WARPS_PER_BLOCK*32];
 
-		__shared__ int output_counters [WARPS_PER_BLOCK*32];
+		//output counter not needed.
+		//__shared__ int output_counters [WARPS_PER_BLOCK*32];
 
 	
 
@@ -399,7 +504,7 @@ struct __attribute__ ((__packed__)) templated_block {
 		buffer_counters[teamID*32+warpID] = 0;	
 
 
-		output_counters[teamID*32+warpID] = 0;
+		//output_counters[teamID*32+warpID] = 0;
 
 
 
@@ -417,15 +522,18 @@ struct __attribute__ ((__packed__)) templated_block {
 
 			if (old_buffer[i].is_empty()) continue;
 
-			int index = (old_buffer[i]) / dividing_line;
+			//int index = (old_buffer[i]) / dividing_line;
 
 			#if DEBUG_ASSERTS
 
-			assert(teamID*32 + index < 32*WARPS_PER_BLOCK);
+			assert(teamID*32 + warpID < 32*WARPS_PER_BLOCK);
 			
 			#endif
 
-			atomicAdd(& buffer_counters[teamID*32 + index], 1);
+			//atomic not needed as I only write to myself
+			//atomicAdd(& buffer_counters[teamID*32 + warpID], 1);
+
+			buffer_counters[teamID*32+warpID] += 1;
 
 		}
 
@@ -463,28 +571,34 @@ struct __attribute__ ((__packed__)) templated_block {
 
 		if (warpID == 31) end = buffer_count;
 
+		int output_counter = 0;
 
 		for (int i = start; i < end; i++){
 
 			if (old_buffer[i].is_empty()) continue;
 
-			int index = (old_buffer[i]) / dividing_line;
+			//int index = (old_buffer[i]) / dividing_line;
 
-			int prefix_start = buffer_counters[teamID*32+index];
+			int prefix_start = buffer_counters[teamID*32+warpID];
 
-			int my_start = atomicAdd(&output_counters[teamID*32+index], 1);
+			//using atomicAdd here doesn't respect ordering.
+
+			//int my_start = atomicAdd(&output_counters[teamID*32+index], 1);
+			int my_start = output_counter;
+			output_counter+=1;
 
 			tags[prefix_start+my_start] = old_buffer[i];
 
 		}
 
+		__syncwarp();
+
+		max_length = __shfl_sync(0xffffffff, max_length, 31, 32);
 
 		return max_length;
 
 
-
 	}
-
 
 	__device__ void sorted_bulk_query(int tag_count, int warpID, Tag_type * items, bool * found, uint64_t nitems){
 
@@ -544,12 +658,12 @@ struct __attribute__ ((__packed__)) templated_block {
 	__device__ void sorted_bulk_delete(int tag_count, int warpID, Tag_type * items, bool * found, uint64_t nitems){
 
 
-		#if DEBUG_ASSERTS
-
+		#if DELETE_DEBUG_ASSERTS
 		assert(assert_sorted<Tag_type>(tags, tag_count));
 		assert(assert_sorted<Tag_type>(items, nitems));
-
 		#endif
+
+		if (warpID != 0) return;
 
 		if (tag_count == 0 || nitems == 0) return;
 
@@ -611,6 +725,18 @@ struct __attribute__ ((__packed__)) templated_block {
 
 	}
 	
+	__device__ bool query_search_linear(Tag_type item, int fill){
+
+
+		for (int i = 0; i < fill; i++){
+			if (tags[i] == item) return true;
+		}
+		
+		return false;
+
+
+
+	}
 
 
 	__device__ bool binary_search_query(Tag_type item, int fill){

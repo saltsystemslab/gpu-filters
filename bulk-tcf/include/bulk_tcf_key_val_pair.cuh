@@ -88,12 +88,39 @@ struct __attribute__ ((__packed__)) key_val_pair: private Wrapper<Val> {
 
 		__host__ __device__ void set_key(Key new_key){
 
+			new_key += (new_key == 0);
+
 			this->key = new_key;
+		}
+
+		__host__ __device__ void set_key_empty(){
+
+			this->key = 0;
+		}
+
+		__host__ __device__ void mark_primary(){
+
+			Key newkey = this->key;
+
+			Key key_mask = (1ULL << (sizeof(Key)*8-1))-1;
+
+			set_key(newkey & key_mask);
+
+		}
+
+		__host__ __device__ void mark_secondary(){
+
+			Key newkey = this->key;
+
+			Key key_mask = (1ULL << (sizeof(Key)*8-1));
+
+			set_key(newkey | key_mask);
+
 		}
 
 		__host__ __device__ bool reset_key_atomic(Key ext_key){
 
-			return typed_atomic_write(&get_key(), ext_key, Key{0ULL});
+			return typed_atomic_write(&key, ext_key, Key{0ULL});
 
 		}
 

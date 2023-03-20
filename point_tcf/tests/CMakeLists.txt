@@ -12,8 +12,6 @@ ConfigureExecutable(kmer_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/kmer_tests.cu" "
 
 ConfigureExecutable(power_2_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/power_2_tests.cu" "${POGGERS_TESTS_BINARY_DIR}")
 
-#ConfigureExecutable(separable_test "${CMAKE_CURRENT_SOURCE_DIR}/src/separable_test.cpp" "${POGGERS_TESTS_BINARY_DIR}")
-
 ConfigureExecutable(bucket_speed_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/bucket_speed_tests.cu" "${POGGERS_TESTS_BINARY_DIR}")
 
 ConfigureExecutable(test_cg_variations "${CMAKE_CURRENT_SOURCE_DIR}/src/test_cg_variations.cu" "${POGGERS_TESTS_BINARY_DIR}")

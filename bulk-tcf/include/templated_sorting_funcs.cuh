@@ -61,6 +61,38 @@ __device__ void insertion_sort(Key_type * items, int nitems){
 
 }
 
+template <typename Key, typename Val, template<typename T> typename Wrapper>
+__device__ void templated_insertion_sort(key_val_pair<Key, Val, Wrapper> * items, int nitems, int warpID){
+
+	if (warpID != 0) return;
+
+	key_val_pair<Key, Val, Wrapper> storage;
+
+	for (int i = 0; i < nitems; i++){
+
+		auto min = items[i].get_key();
+
+		for (int j = i; j < nitems; j++){
+
+			if (items[j].get_key() < min){
+
+				min = items[j].get_key();
+
+				storage = items[i];
+
+				items[i] = items[j];
+
+				items[j] = storage;
+
+
+			}
+
+		}
+
+	}
+
+
+}
 
 template <typename Key, typename Val, template<typename T> typename Wrapper>
 __device__ void sorting_network(key_val_pair<Key, Val, Wrapper> * items, int nitems, int warpID){

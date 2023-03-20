@@ -6,8 +6,8 @@
  *
  *
  *        About:
- *          This file is for isolating a bug in the TCF delete marking
- *          - insert a few items, measure fill, delete, and then recalculate.
+ *          This tests the performance of the TCF on the sawtooth test
+ *          by filling to a high load factor than incrementally deleting/reinserting.
  *          
  *
  * ============================================================================
