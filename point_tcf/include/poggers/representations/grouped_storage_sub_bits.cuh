@@ -119,7 +119,7 @@ struct  grouped_bits_pair {
 
 		__host__ __device__ grouped_bits_pair(){}
 
-		__device__ inline static const int tag_bits(){
+		__device__ inline static int tag_bits(){
 			return sizeof(key_bits);
 		}
 

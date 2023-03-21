@@ -224,7 +224,7 @@ struct  bucketed_internal_dynamic_container {
 
 		}
 
-		__device__ inline static const int tag_bits(){
+		__device__ inline static int tag_bits(){
 			return filled_container_type::tag_bits();
 		}
 

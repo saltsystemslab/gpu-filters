@@ -216,7 +216,6 @@ public:
 
 		key = rep_type::tag(full_hash);
 
-		auto size_in_bytes = sizeof rep_type::tag(full_hash);
 
 		uint64_t remainder = full_hash >> (rep_type::tag_bits());
 

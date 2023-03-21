@@ -77,6 +77,7 @@ Running Tests
 
 Several tests exist to showcase the behavior/performance of the TCF
 
-* `test_cg_variations`: iterate over all of the cooperative group options for the primary table, and record their throughput.
-* `delete_tests`: test the delete TCF on insertion, query, and deleting 50% of items.
+* `test_cg_variations`: Iterate over all of the cooperative group options for the primary table and record their throughput.
+* `delete_tests`: Test the delete TCF on insertion, query, and deleting 50% of items.
 * `sawtooth_test`: Fill the delete TCF to 90% load factor, then delete items in batches.
+* `speed_tests`: Test speed of TCF and delete TCF on basic ops.

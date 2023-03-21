@@ -86,7 +86,7 @@ struct  struct_of_arrays {
 
 		}
 
-		__device__ inline static const int tag_bits(){
+		__device__ inline static int tag_bits(){
 			return sizeof(Key)*8;
 		}
 

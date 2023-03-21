@@ -76,7 +76,7 @@ struct  twelve_bucket {
 		}
 
 
-		__device__ inline static const int tag_bits(){
+		__device__ inline static int tag_bits(){
 			return 12;
 		}
 
@@ -302,7 +302,9 @@ struct  twelve_bucket {
 		}
 
 
-		static Key tag(Key key){
+		__device__ static Key tag(Key key){
+
+			return key & ((1ULL << 12)-1);
 
 		}
 		

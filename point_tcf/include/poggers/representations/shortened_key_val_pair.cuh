@@ -75,7 +75,7 @@ struct  shortened_bitmask_key_val_pair {
 
 		}
 
-		__device__ inline static const int tag_bits(){
+		__device__ inline static int tag_bits(){
 			return sizeof(SmallKey)*8;
 		}
 

@@ -132,15 +132,15 @@ using tcf = poggers::tables::static_table<uint64_t,uint16_t, poggers::representa
 
 
 using del_backing_table = poggers::tables::bucketed_table<
-    uint64_t, uint8_t,
+    uint64_t, uint16_t,
     poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<10, 6>::representation, uint16_t>::representation>::representation,
+        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
     1, 8, poggers::insert_schemes::linear_insert_bucket_scheme, 20, poggers::probing_schemes::doubleHasher,
     poggers::hashers::murmurHasher>;
 using del_TCF = poggers::tables::bucketed_table<
-    uint64_t, uint8_t,
+    uint64_t, uint16_t,
     poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<10, 6>::representation, uint16_t>::representation>::representation,
+        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
     1, 8, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher,
     poggers::hashers::murmurHasher, true, del_backing_table>;
 
@@ -610,7 +610,7 @@ __host__ void test_speed_batched(const std::string& filename, Sizing_Type * Init
 
    cudaDeviceSynchronize();
 
-   printf("Fill before: %llu items\n", test_filter->get_fill());
+   //printf("Fill before: %llu items\n", test_filter->get_fill());
 
    cudaDeviceSynchronize();
 
@@ -632,7 +632,7 @@ __host__ void test_speed_batched(const std::string& filename, Sizing_Type * Init
 
    cudaFree(dev_keys);
 
-   printf("Fill after: %llu items\n", test_filter->get_fill());
+   //printf("Fill after: %llu items\n", test_filter->get_fill());
 
 
    Filter::free_on_device(test_filter);
@@ -794,84 +794,56 @@ int main(int argc, char** argv) {
    // printf("2^28\n");
    // test_speed<table_type, uint64_t, uint64_t>(&first_size_28);
 
-   int nbits = 20;
+
+   for (int i = 20; i <= 30; i+=2){
+
+      int nbits = i;
+      uint64_t nitems = 1ULL << i;
+
+      poggers::sizing::size_in_num_slots<2> test_size (nitems, nitems/100);
+
+      // //printf("22 size: %llu\n", test_size_24.total());
+      test_speed_batched<tcf, uint64_t, uint16_t>("results/test_" + std::to_string(nbits), &test_size, 20);
 
 
-   //for MHM TCF size to .9 and .1
-   poggers::sizing::variadic_size test_size_24 (.9*(1ULL << nbits), .10*(1ULL << nbits));
+   }
 
-   // //printf("22 size: %llu\n", test_size_24.total());
-   test_speed_batched<del_TCF, uint64_t, uint8_t>("results/test_32", &test_size_24, 20);
-   // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_24", generate_size(24), 20);
-   // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_26", generate_size(26), 20);
-   // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_28", generate_size(28), 20);
-   // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_30", generate_size(30), 20);
+   for (int i = 20; i <= 30; i++){
+
+      int nbits = i;
+
+       uint64_t nitems = 1ULL << i;
+
+      poggers::sizing::size_in_num_slots<2> test_size (90ULL*nitems/100, 10ULL*nitems/100);
+
+      // //printf("22 size: %llu\n", test_size_24.total());
+      test_speed_batched<del_TCF, uint64_t, uint16_t>("results/delete_test_" + std::to_string(nbits), &test_size, 20);
+
+
+   }
+
+   
+
+
+   // //for MHM TCF size to .9 and .1
+   // poggers::sizing::variadic_size test_size_24 (.9*(1ULL << nbits), .10*(1ULL << nbits));
+
+   // // //printf("22 size: %llu\n", test_size_24.total());
+   // test_speed_batched<del_TCF, uint64_t, uint8_t>("results/deltest_32", &test_size_24, 20);
+   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_24", generate_size(24), 20);
+   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_26", generate_size(26), 20);
+   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_28", generate_size(28), 20);
+   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_30", generate_size(30), 20);
+
+   cudaDeviceSynchronize();
+
+   //poggers::sizing::size_in_num_slots<1> bucket_size (1ULL<<nbits);
+
 
    cudaDeviceSynchronize();
 
 
-   // poggers::sizing::variadic_size test_size_24_tcf ((1ULL << nbits), (1ULL << nbits)/100);
-
-   // //printf("22 size: %llu\n", test_size_24.total());
-   // test_speed_batched<tcf, uint64_t, uint16_t>("results/test_32", &test_size_24_tcf, 20);
-
-
-
-   poggers::sizing::size_in_num_slots<1> bucket_size (1ULL<<nbits);
-
-   //test_speed_batched<double_buckets, uint64_t,uint64_t>("results/double_buckets", &bucket_size, 20);
-
-   cudaDeviceSynchronize();
-
-   // printf("alt table\n");
-
-   // test_p2(6000);
-
-   // test_p2(1ULL << 22);
-   // test_p2(1ULL << 24);
-   // test_p2(1ULL << 26);
-   // test_p2(1ULL << 28);
-   // test_p2(1ULL << 30);
-   // test_speed<small_double_type, uint64_t, uint64_t>(&half_split_22);
-
-   // poggers::sizing::size_in_num_slots<2>half_split_24(1ULL << 23, 1ULL << 23);
-   // test_speed<small_double_type, uint64_t, uint64_t>(&half_split_24);
-
-   // poggers::sizing::size_in_num_slots<2>half_split_26(1ULL << 25, 1ULL << 25);
-   // test_speed<small_double_type, uint64_t, uint64_t>(&half_split_26);
-
-
-   // printf("P2 tiny table\n");
-   // poggers::sizing::size_in_num_slots<1>half_split_28(1ULL << 30);
-   // test_speed<p2_table, uint64_t, uint16_t>(&half_split_28);
-
-
-   //printf("Icerberg - Tier one\n");
-
-
-   //poggers::sizing::size_in_num_slots<1> tier_one_iceberg_size(1ULL << 28);
-   //test_speed<tier_one_iceberg, uint64_t, uint64_t>(&tier_one_iceberg_size);
-
-
-   // printf("Icerberg - Tier two\n");
-
-   // //this section is allocated 1/8th of the space as tier one
-   // poggers::sizing::size_in_num_slots<1> tier_two_iceberg_size((1ULL << 28)/8);
-   // test_speed<tier_two_icerberg, uint64_t, uint64_t>(&tier_two_iceberg_size);
-
-   // printf("Icerberg - Tier three\n");
-
-   // poggers::sizing::size_in_num_slots<1> tier_three_iceberg_size((1500));
-   // test_speed<tier_three_iceberg, uint64_t, uint64_t>(&tier_three_iceberg_size);
-
-
-   // printf("Icerberg - Joined\n");
-
-   // poggers::sizing::size_in_num_slots<3> iceberg_size((1ULL << 28), (1ULL << 28)/8, 1500);
-   // test_speed<iceberg_table, uint64_t, uint64_t>(&iceberg_size);
-
-   del_TCF test;
-
+ 
 	return 0;
 
 }
