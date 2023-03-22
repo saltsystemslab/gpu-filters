@@ -17,52 +17,52 @@
 
 
 //#include "include/templated_quad_table.cuh"
-#include <poggers/metadata.cuh>
-#include <poggers/hash_schemes/murmurhash.cuh>
-#include <poggers/probing_schemes/linear_probing.cuh>
-#include <poggers/probing_schemes/double_hashing.cuh>
-#include <poggers/probing_schemes/power_of_two.cuh>
-#include <poggers/insert_schemes/single_slot_insert.cuh>
-#include <poggers/insert_schemes/bucket_insert.cuh>
-#include <poggers/insert_schemes/power_of_n.cuh>
-#include <poggers/representations/key_val_pair.cuh>
-#include <poggers/representations/shortened_key_val_pair.cuh>
-#include <poggers/sizing/default_sizing.cuh>
-#include <poggers/tables/base_table.cuh>
-#include <poggers/insert_schemes/power_of_n_shortcut.cuh>
+// #include <poggers/metadata.cuh>
+// #include <poggers/hash_schemes/murmurhash.cuh>
+// #include <poggers/probing_schemes/linear_probing.cuh>
+// #include <poggers/probing_schemes/double_hashing.cuh>
+// #include <poggers/probing_schemes/power_of_two.cuh>
+// #include <poggers/insert_schemes/single_slot_insert.cuh>
+// #include <poggers/insert_schemes/bucket_insert.cuh>
+// #include <poggers/insert_schemes/power_of_n.cuh>
+// #include <poggers/representations/key_val_pair.cuh>
+// #include <poggers/representations/shortened_key_val_pair.cuh>
+// #include <poggers/sizing/default_sizing.cuh>
+// #include <poggers/tables/base_table.cuh>
+// #include <poggers/insert_schemes/power_of_n_shortcut.cuh>
 
-#include <poggers/sizing/variadic_sizing.cuh>
+// #include <poggers/sizing/variadic_sizing.cuh>
 
-#include <poggers/representations/soa.cuh>
-#include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
+// #include <poggers/representations/soa.cuh>
+// #include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
 
-#include <poggers/tables/bucketed_table.cuh>
+// #include <poggers/tables/bucketed_table.cuh>
 
-#include <poggers/metadata.cuh>
-#include <poggers/hash_schemes/murmurhash.cuh>
-#include <poggers/probing_schemes/double_hashing.cuh>
-#include <poggers/probing_schemes/power_of_two.cuh>
+// #include <poggers/metadata.cuh>
+// #include <poggers/hash_schemes/murmurhash.cuh>
+// #include <poggers/probing_schemes/double_hashing.cuh>
+// #include <poggers/probing_schemes/power_of_two.cuh>
 
-// new container for 2-byte key val pairs
-#include <poggers/representations/grouped_key_val_pair.cuh>
+// // new container for 2-byte key val pairs
+// #include <poggers/representations/grouped_key_val_pair.cuh>
 
-#include <poggers/representations/key_val_pair.cuh>
-#include <poggers/representations/dynamic_container.cuh>
+// #include <poggers/representations/key_val_pair.cuh>
+// #include <poggers/representations/dynamic_container.cuh>
 
-#include <poggers/sizing/default_sizing.cuh>
+// #include <poggers/sizing/default_sizing.cuh>
 
-#include <poggers/insert_schemes/power_of_n_shortcut.cuh>
-#include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
+// #include <poggers/insert_schemes/power_of_n_shortcut.cuh>
+// #include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
 
-#include <poggers/representations/packed_bucket.cuh>
+// #include <poggers/representations/packed_bucket.cuh>
 
-#include <poggers/insert_schemes/linear_insert_buckets.cuh>
+// #include <poggers/insert_schemes/linear_insert_buckets.cuh>
 
-#include <poggers/tables/bucketed_table.cuh>
+// #include <poggers/tables/bucketed_table.cuh>
 
-#include <poggers/representations/grouped_storage_sub_bits.cuh>
+// #include <poggers/representations/grouped_storage_sub_bits.cuh>
 
-#include <poggers/probing_schemes/xor_power_of_two.cuh>
+// #include <poggers/probing_schemes/xor_power_of_two.cuh>
 
 
 
@@ -693,18 +693,6 @@ __host__ void delete_tests(Filter * test_filter, uint64_t nitems){
 //    poggers::sizing::size_in_num_slots<1>half_split_20(nitems);
 //    test_speed<p2_table, uint64_t, uint16_t>(&half_split_20);
 // }
-
-
-__host__ poggers::sizing::variadic_size generate_size(int nbits){
-
-   uint64_t nslots = (1ULL << nbits);
-
-
-   poggers::sizing::variadic_size internal_size(nslots, nslots/100);
-
-   return internal_size;
-
-}
 
 
 

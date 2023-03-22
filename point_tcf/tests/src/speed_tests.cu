@@ -230,6 +230,7 @@ __global__ void speed_insert_kernel(Filter * filter, Key * keys, Val * vals, uin
    } else{
 
       Val test_val = 0;
+      test_val += 0;
       assert(filter->query(tile, keys[tid], test_val));
    }
 
@@ -286,7 +287,7 @@ __global__ void speed_delete_kernel(Filter * filter, Key * keys, uint64_t nvals,
 
    if (!filter->remove(tile,keys[tid]) ){
 
-      Val val;
+      Val val = 0;
       val+=0;
 
       filter->query(tile, keys[tid], val);
@@ -298,7 +299,7 @@ __global__ void speed_delete_kernel(Filter * filter, Key * keys, uint64_t nvals,
 
    } else {
 
-      Val val;
+      Val val = 0;
       //thank you compiler very cool
       val +=0 ;
       if (filter->query(tile,keys[tid], val) && tile.thread_rank() == 0 ){
@@ -328,7 +329,7 @@ __global__ void speed_delete_single_thread(Filter * filter, Key * keys, uint64_t
 
       if (!filter->remove(tile,keys[i]) ){
 
-      Val val;
+      Val val = 0;
       val+=0;
 
       filter->query(tile, keys[i], val);
@@ -340,7 +341,7 @@ __global__ void speed_delete_single_thread(Filter * filter, Key * keys, uint64_t
 
    } else {
 
-      Val val;
+      Val val = 0;
       //thank you compiler very cool
       val +=0 ;
       if (filter->query(tile,keys[i], val) && tile.thread_rank() == 0 ){

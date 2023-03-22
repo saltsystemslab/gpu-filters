@@ -338,6 +338,7 @@ __global__ void speed_insert_kernel(Filter * filter, Key * keys, Val * vals, uin
    } else{
 
       Val test_val = 0;
+      test_val +=0;
       assert(filter->query(tile, keys[tid], test_val));
 
       //assert(test_val == vals[tid]);
@@ -395,6 +396,7 @@ __global__ void debug_query_kernel(Filter * filter, Key * keys, Val * vals, uint
    if (missed[tid]) return;
 
    Val test_val = 0;
+   test_val +=0;
 
    if (!filter->query(tile,keys[tid], test_val)){
 

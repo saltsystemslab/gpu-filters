@@ -41,7 +41,7 @@ Device API / Classes
 TCF Deletes
 ----------
 
-Insertions do not check for tombstones by default. To enable this behavior, use ```tcf->insert_with_delete``` instead of ```tcf->insert```. This comes with a small performance hit of 1.1e9 inserts per second instead of 1.3e9.
+Insertions do not replace tombstones by default. To enable this behavior, use ```tcf->insert_with_delete``` instead of ```tcf->insert```. This comes with a small performance hit of 1.1e9 inserts per second instead of 1.3e9.
 
 Configuration
 --------------
@@ -52,26 +52,21 @@ The TCF Wrapper takes in the following template parameters:
 * `value type`: type of input values. This must be at least `val_bits` bits.
 * `key_bits`: how many bits are stored per key in the filter.
 * `val bits`: how many bits are stored per value in the filter.
-* `cooperative_group_size`: how many threads are assigned per key.
+* `cooperative_group_size`: how many threads are assigned per operation.
 * `bucket size`: how many keys are stored per bucket.
 
-For example, the tcf with `64` bit keys and `16` bit values, storing them together in one `uint32_t`, with `4` threads per key and `16` keys per bucket, would be:
+For example, the tcf with `64` bit keys and `16` bit values, storing them together in one `uint32_t`, with `4` threads per operation and `16` keys per bucket, would be:
 
 `poggers::data_structs::tcf_wrapper<uint64_t, uint16_t, 16, 16, 4, 16>::tcf`.
 
 
-The template has the following requirement on the input types:
+The template has the following requirements on the input types:
 
-`sizeof(key_type) >= key_bits`
-
-`sizeof(val_type) >= val_bits`
-
-`key_bits+val_bits <= 64`
-
-
-`Bucket Size % CG Size = 0`
-
-`CG Size = {1,2,4,8,16,32}`.
+* `sizeof(key_type) >= key_bits`
+* `sizeof(val_type) >= val_bits`
+* `key_bits+val_bits <= 64`
+* `bucket size % cooperative group size == 0`
+* `cooperative group size = {1,2,4,8,16,32}`
 
 The TCF uses CUDA's atomicCAS to swap items, so (key,val) pairs are packed into `uint16_t, uint32_t, uint64_t`.
 
