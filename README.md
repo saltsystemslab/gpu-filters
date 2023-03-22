@@ -14,11 +14,9 @@ FEATURES
 
 3) GPU Quotient Filter (GQF)
 	- A Counting Quotient Filter implementation on the GPU
-	- supports insertions, queries, deletions, key-value assocation, and counting.
+	- Supports insertions, queries, deletions, key-value assocation, and counting.
 	- Point and Bulk API for different workloads
-	- reduction insertion scheme for Zipfian workloads.
-
-
+	- Reduction insertion scheme for Zipfian workloads.
 
 ____________________
 
@@ -48,12 +46,10 @@ To cache the library, specify a download folder:
 ```set(CPM_SOURCE_CACHE "${CMAKE_CURRENT_SOURCE_DIR}/downloaded_libraries")```
 
 
-
 Building Tests
 --------------
 
 Each filter has it's own battery of tests, along with a README that specifies how to build and run the tests.
-
 
 
 Publication
@@ -64,6 +60,7 @@ These filters were released in the publication "High Performance Filters For GPU
 The paper is available here: https://dl.acm.org/doi/pdf/10.1145/3572848.3577507
 
 To cite these filters, please use the following citation:
+
 ```
 @inproceedings{10.1145/3572848.3577507,
 author = {McCoy, Hunter and Hofmeyr, Steven and Yelick, Katherine and Pandey, Prashant},
