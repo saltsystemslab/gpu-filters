@@ -74,13 +74,13 @@ The TCF takes in the following template parameters:
 * `key type`: type of input keys
 * `value type`: type of input values
 * `storage type`: This specificies how the key, value pair are stored
-* `Cooperative group size`: Size of the cooperative groups
-* `Bucket Size`: How many key, value pairs can be stored in each bucket
-* `Probing scheme`: How the filter traverses buckets
-* `Insertion scheme`: How the filter chooses to insert into selected buckets (double hashing, power-of-two-hashing, etc.)
-* `Hash function`: How keys are hashed
-* `has backing table`: True if a backing table is used. False by default
-* `backing table type`: Type of the backing table. None by default
+* `cooperative group size`: size of the cooperative groups
+* `bucket Size`: how many key, value pairs can be stored in each bucket
+* `probing scheme`: how the filter traverses buckets
+* `insertion scheme`: how the filter chooses to insert into selected buckets (double hashing, power-of-two-hashing, etc.)
+* `hash function`: how keys are hashed
+* `has backing table`: true if a backing table is used. False by default
+* `backing table type`: type of the backing table. None by default
 
 Supported configurations:
 
@@ -88,12 +88,12 @@ To replicate the results of our paper, we support the following configurations:
 
 * `key type`: uint64_t
 * `value type`: uint8_t, uint16_t, uint32_t
-* `storage type`: `bit_grouped_container<key_vits, val_bits>`: This type tightly packs keys and values together. To run with key_only, set value bits to 0.
-* `Cooperative group size`: 1,2,4,8,16,32
-* `Bucket Size`: Any positive integer
-* `Probing scheme`: Double hashing, linear probing, two-choice hash, XOR two-choice hash.
-* `Insertion scheme`: Insert into any bucket, insert into least full bucket.
-* `Hash function`: murmurhash
+* `storage type`: `bit_grouped_container<tag_vits, val_bits>`: this type tightly packs keys and values together, storing the lower tag_bits from a key and the lower val_bits from a value. To run with key_only, set value bits to 0.
+* `cooperative group size`: 1,2,4,8,16,32
+* `bucket Size`: any positive integer
+* `probing scheme`: double hashing, linear probing, two-choice hash, XOR two-choice hash.
+* `Insertion scheme`: insert into any bucket, insert into least full bucket.
+* `ash function`: murmurhash
 
 Building
 --------
