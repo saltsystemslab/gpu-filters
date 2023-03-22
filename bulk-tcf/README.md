@@ -40,14 +40,12 @@ The size of the internal blocks used in the bulk TCF can be modified inside of `
 * `BYTES_PER_CACHE_LINE / CACHE_LINES_PER_BLOCK`: These two values multiplied together is the amount of space given to each filter section. Upping this increases throughput but is limited by shared memory.
 
 
-Recommended metadata
+Supported metadata
 --------
 
-For the key-only bulk tcf with key size uint16_t, the optimal configuration is `16, 128, 128, 2`.
+For the key-only bulk tcf with tag size uint16_t, the optimal configuration is `16, 128, 128, 2`.
 
-For 16 bit keys, 16 bit vals, the optimal configuration is `16, 64, 128, 4`.
-
-
+For 16 bit tags, 16 bit vals, the optimal configuration is `16, 64, 128, 4`.
 
 
 Functions
