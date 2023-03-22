@@ -15,6 +15,8 @@
 
 // };
 
+#define GROUPED_ASSERTS 1
+
 namespace poggers {
 
 
@@ -33,7 +35,27 @@ namespace representations {
 //Storage keeps items (Val, Key) in memory
 //Key retreived via OR with lower bits
 template<size_t key_bits, size_t val_bits>
-struct internal_key_val_storage : poggers::helpers::bytetype< ((key_bits+val_bits)/8) >{};
+struct internal_key_val_storage : poggers::helpers::bytetype< ((key_bits+val_bits-1)/8+1) >{};
+
+
+template<typename Key, size_t key_bits>
+__host__ __device__ Key clip_to_tag(Key ext_key){
+
+	ext_key = ext_key & ((1ULL << key_bits)-1);
+
+	if (ext_key == 0){
+		ext_key += 1;
+	}
+
+	//my_key += (my_key == Key{0});
+
+	if (ext_key == ((1ULL << key_bits)-1)){
+		ext_key -=1;
+	}
+
+	return ext_key;
+
+}
 
 
 template<typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
@@ -84,9 +106,64 @@ __host__ __device__ Storage join_in_storage(Key my_key, Val my_val){
 	//clip key and val
 	my_val = my_val & ((1ULL << val_bits) -1);
 
-	my_key = my_key & ((1ULL << key_bits)-1);
+	// my_key = my_key & ((1ULL << key_bits)-1);
 
-	empty_storage |= my_val << key_bits;
+	// if (my_key == 0){
+	// 	my_key += 1;
+	// }
+
+	// //my_key += (my_key == Key{0});
+
+	// if (my_key == ((1ULL << key_bits)-1)){
+	// 	my_key -=1;
+	// }
+
+	my_key = clip_to_tag<Key, key_bits>(my_key);
+
+
+	empty_storage |= ((uint64_t) my_val) << key_bits;
+
+	empty_storage |= my_key;
+
+	return empty_storage;
+
+}
+
+
+template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
+__host__ __device__ Storage join_in_storage_tombstone(){
+
+	Storage empty_storage = Storage{0};
+
+	//printf("Storing %lx, %u, %u\n", empty_storage, my_key, my_val);
+
+	//clip key and val
+	Val my_val = 0;
+
+	Key my_key = (1ULL << key_bits)-1;
+
+	empty_storage |= ((uint64_t) my_val) << key_bits;
+
+	empty_storage |= my_key;
+
+	return empty_storage;
+
+}
+
+
+template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
+__host__ __device__ Storage join_in_storage_empty(){
+
+	Storage empty_storage = Storage{0};
+
+	//printf("Storing %lx, %u, %u\n", empty_storage, my_key, my_val);
+
+	//clip key and val
+	Val my_val = 0;
+
+	Key my_key = Key{0};
+
+	empty_storage |= ((uint64_t) my_val) << key_bits;
 
 	empty_storage |= my_key;
 
@@ -120,7 +197,7 @@ struct  grouped_bits_pair {
 		__host__ __device__ grouped_bits_pair(){}
 
 		__device__ inline static int tag_bits(){
-			return sizeof(key_bits);
+			return key_bits;
 		}
 
 		//constructor
@@ -132,9 +209,17 @@ struct  grouped_bits_pair {
 
 			storage_type ext_storage = join_in_storage<Key, Val, storage_type, key_bits, val_bits>(ext_key, ext_val);
 
-			if (poggers::helpers::typed_atomic_write(&my_storage, join_in_storage<Key, Val, storage_type, key_bits, val_bits>(get_empty(), get_empty_val()), ext_storage)){
+			if (poggers::helpers::typed_atomic_write(&my_storage, join_in_storage_empty<Key, Val, storage_type, key_bits, val_bits>(), ext_storage)){
 
 				//val = ext_val;
+
+				#if GROUPED_ASSERTS
+
+				if (!contains(ext_key)){
+					printf("Failed to retreive\n");
+				}
+
+				#endif
 
 				return true;
 
@@ -148,9 +233,18 @@ struct  grouped_bits_pair {
 
 			storage_type ext_storage = join_in_storage<Key, Val, storage_type, key_bits, val_bits>(ext_key, ext_val);
 
-			if (poggers::helpers::typed_atomic_write(&my_storage, join_in_storage<Key, Val, storage_type, key_bits, val_bits>(get_tombstone(), get_empty_val()), ext_storage)){
+			if (poggers::helpers::typed_atomic_write(&my_storage, join_in_storage_tombstone<Key, Val, storage_type, key_bits, val_bits>(), ext_storage)){
 
 				//val = ext_val;
+
+
+				#if GROUPED_ASSERTS
+
+				if (!contains(ext_key)){
+					printf("Failed to set from tombstone\n");
+				}
+
+				#endif
 
 				return true;
 
@@ -174,7 +268,7 @@ struct  grouped_bits_pair {
 
 			Key key = retrieve_key_from_storage<Key, Val, storage_type, key_bits, val_bits>(my_storage);
 
-			Key tombstone = get_tombstone() & ((1ULL << key_bits)-1);
+			Key tombstone = get_tombstone();
 
 			return (key == tombstone);
 
@@ -186,14 +280,16 @@ struct  grouped_bits_pair {
 			// 	printf("Grouped sub bits see tombstone as %llx\n", get_empty()-1);
 			// }
 			
-			return get_empty()-1;
+			return ((1ULL << key_bits)-1);
 		}
 
 		__host__ __device__ inline bool contains(Key ext_key){
 
 			Key key = retrieve_key_from_storage<Key, Val, storage_type, key_bits, val_bits>(my_storage);
 
-			ext_key = ext_key & ((1ULL << key_bits)-1);
+			//ext_key = ext_key & ((1ULL << key_bits)-1);
+
+			ext_key = clip_to_tag<Key, key_bits>(ext_key);
 
 			return (key == ext_key);
 		}
@@ -201,7 +297,7 @@ struct  grouped_bits_pair {
 
 		__host__ __device__ static inline Key tag(Key ext_key){
 
-			return ext_key & ((1ULL << key_bits)-1);
+			return clip_to_tag<Key, key_bits>(ext_key);
 
 		}
 
@@ -214,7 +310,7 @@ struct  grouped_bits_pair {
 
 		__host__ __device__ inline void reset(){
 
-			Key key = join_in_storage<Key, Val, storage_type, key_bits, val_bits>(get_empty(), get_empty_val());
+			Key key = join_in_storage_empty<Key, Val, storage_type, key_bits, val_bits>();
 
 		}
 
@@ -224,12 +320,21 @@ struct  grouped_bits_pair {
 
 			storage_type ext_storage = join_in_storage<Key, Val, storage_type, key_bits, val_bits>(ext_key, my_val);
 
-			storage_type tombstone_storage = join_in_storage<Key, Val, storage_type, key_bits, val_bits>(get_tombstone(), get_empty_val());
+			storage_type tombstone_storage = join_in_storage_tombstone<Key, Val, storage_type, key_bits, val_bits>();
 
 			//printf("Tombstone is %llu, ext_value is %llu,")
 
 
 			if (poggers::helpers::typed_atomic_write(&my_storage, ext_storage, tombstone_storage)){
+
+				#if GROUPED_ASSERTS
+
+				if(!contains_tombstone()){
+					printf("Failed to swap!\n");
+				}
+
+				#endif
+
 				return true;
 			}
 

@@ -66,6 +66,8 @@
 #include <poggers/probing_schemes/xor_power_of_two.cuh>
 
 
+#include <poggers/data_structs/tcf.cuh>
+
 
 #include <stdio.h>
 #include <iostream>
@@ -99,93 +101,8 @@ double elapsed(std::chrono::high_resolution_clock::time_point t1, std::chrono::h
    return (std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1)).count();
 }
 
+using del_TCF = poggers::data_structs::tcf_wrapper<uint64_t, uint16_t, 16, 16, 4, 16>::tcf;
 
-// using insert_type = poggers::insert_schemes::single_slot_insert<uint64_t, uint64_t, 8, 8, poggers::representations::key_val_pair, 5, poggers::hashers::murmurHasher, poggers::probing_schemes::doubleHasher>;
-
-// using table_type = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 4, 4, poggers::insert_schemes::bucket_insert, 200, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-//      // poggers::representations::key_val_pair, 8>
-
-//      //using forst_tier_table_type = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, poggers::insert_schemes::single_slot_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-    
-// using second_tier_table_type = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 8, poggers::insert_schemes::single_slot_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher, true, table_type>;
-
-// using inner_table = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 8, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-
-// using small_double_type = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 8, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher, true, inner_table>;
-
-// using p2_table = poggers::tables::static_table<uint64_t,uint16_t, poggers::representations::shortened_key_val_wrapper<uint16_t>::key_val_pair, 8, 16, poggers::insert_schemes::power_of_n_insert_scheme, 2, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-
-   
-// using tier_one_iceberg = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 8, poggers::insert_schemes::bucket_insert, 1, poggers::probing_schemes::linearProber, poggers::hashers::murmurHasher>;
-
-// using tier_two_icerberg = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 8, poggers::insert_schemes::power_of_n_insert_scheme, 2, poggers::probing_schemes::powerOfTwoHasher, poggers::hashers::murmurHasher>;
-
-// using tier_three_iceberg = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 8, poggers::insert_schemes::bucket_insert, 10, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-
-
-// using tier_two_icerberg_joined = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 8, poggers::insert_schemes::power_of_n_insert_scheme, 2, poggers::probing_schemes::powerOfTwoHasher, poggers::hashers::murmurHasher, true, tier_three_iceberg>;
-
-// using iceberg_table = poggers::tables::static_table<uint64_t, uint64_t, poggers::representations::key_val_pair, 8, 64, poggers::insert_schemes::bucket_insert, 1, poggers::probing_schemes::linearProber, poggers::hashers::murmurHasher, true, tier_two_icerberg_joined>;
-
-
-// using tiny_static_table_4 = poggers::tables::static_table<uint64_t, uint16_t, poggers::representations::shortened_key_val_wrapper<uint16_t>::key_val_pair, 4, 4, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-// using tcf = poggers::tables::static_table<uint64_t,uint16_t, poggers::representations::shortened_key_val_wrapper<uint16_t>::key_val_pair, 4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_scheme, 2, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher, true, tiny_static_table_4>;
-
-// using tiny_static_table_4 = poggers::tables::static_table<uint64_t, uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 4, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-// using tcf = poggers::tables::static_table<uint64_t,uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher, poggers::hashers::murmurHasher, true, tiny_static_table_4>;
-
-
-using del_backing_table = poggers::tables::bucketed_table<
-    uint64_t, uint16_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
-    4, 8, poggers::insert_schemes::linear_insert_bucket_scheme, 40000, poggers::probing_schemes::linearProber,
-    poggers::hashers::murmurHasher>;
-
-
-
-using del_TCF = poggers::tables::bucketed_table<
-    uint64_t, uint16_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
-    4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher,
-    poggers::hashers::murmurHasher, true, del_backing_table>;
-
-
-
-using del_TCF_noback = poggers::tables::bucketed_table<
-    uint64_t, uint16_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
-    4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher,
-    poggers::hashers::murmurHasher>;
-
-
-
-using del_backing_table_small = poggers::tables::bucketed_table<
-    uint64_t, uint8_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<8, 8>::representation, uint8_t>::representation>::representation,
-    4, 8, poggers::insert_schemes::linear_insert_bucket_scheme, 40000, poggers::probing_schemes::linearProber,
-    poggers::hashers::murmurHasher>;
-
-
-
-using del_TCF_small = poggers::tables::bucketed_table<
-    uint64_t, uint8_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<8, 8>::representation, uint8_t>::representation>::representation,
-    4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher,
-    poggers::hashers::murmurHasher, true, del_backing_table_small>;
-
-
-
-
-
-// shortened_key_val_wrapper
-
-
-//using double_buckets = poggers::tables::bucketed_table<uint64_t, uint64_t, poggers::representations::struct_of_arrays, 4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
 
 
 #define gpuErrorCheck(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -288,6 +205,7 @@ __global__ void speed_insert_with_delete_kernel(Filter * filter, Key * keys, Val
    } else{
 
       Val test_val = 0;
+      test_val+=0;
       assert(filter->query(tile, keys[tid], test_val));
    }
 
@@ -344,7 +262,7 @@ __global__ void speed_delete_kernel(Filter * filter, Key * keys, uint64_t nvals,
 
    if (!filter->remove(tile,keys[tid]) ){
 
-      Val val;
+      Val val = 0;
       val+=0;
 
       filter->query(tile, keys[tid], val);
@@ -759,7 +677,7 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 
    }
 
-   printf("Insert fails: %llu, delete misses: %llu, delete false matching: %llu, False negatives: %llu, false positives: %llu, re-add misses %llu\n", misses[0], misses[1], misses[2], misses[3], misses[4], misses[5]);
+   printf("Insert fails: %llu, delete misses: %llu, delete value mismatch: %llu, False negatives: %llu, false positives: %llu, re-add misses %llu\n", misses[0], misses[1], misses[2], misses[3], misses[4], misses[5]);
 
    return;
 

@@ -3,13 +3,8 @@
 Two Choice Filter (TCF)
 ----------
 
-The two choice filter (TCF) is a fast approximate data structure based on two-choice hashing. The base version of the TCF supports insertions, queries, and key-value association. To include the base version of the TCF, include ```<poggers/data_structs/tcf.cuh>``` or add the following template:
+The two choice filter (TCF) is a fast approximate data structure based on two-choice hashing. The base version of the TCF supports insertions, queries, and key-value association. To include the base version of the TCF, include ```<poggers/data_structs/tcf.cuh>```
 
-
-```
-  using tcf_backing_table = poggers::tables::static_table<uint64_t, uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 4, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-  using tcf = poggers::tables::static_table<uint64_t,uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_scheme, 2, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher, true, tcf_backing_table>;
-```
 
 API
 ----------
@@ -17,10 +12,15 @@ API
 Host API / Classes
 ----------
 
-* `sizing_in_num_slots<num_layers>`: This class is used to specify the size and layout of the TCF, 
-(uint64_t layer1_num_slots, uint64_t layer2_num_slots)`
-* `__host__ static filter_type * generate_on_device(&sizing_in_num_slots<num_layers> sizing)`: Giving a sizing class, initialize the filter on device.
-* `__host__ static void free_on_device(filter_type * TCF)`: Free the TCF, handing back the memory to device.
+
+Wrapper API
+* `__host__ static tcf * tcf_wrapper::generate_on_device(uint64_t nslots)`: Given nslots, build a filter with that many slots. Requires the template parameters to be filled.
+* `__host__ tcf_wrapper::free_on_device(tcf * tcf_ptr)`: Free the TCF from the wrapper.
+
+
+Filter Host API
+* `__host__ static tcf * generate_on_device(&sizing_in_num_slots<num_layers> sizing)`: Giving a sizing class, initialize the filter on device.
+* `__host__ static void free_on_device(tcf * TCF)`: Free the TCF, handing back the memory to device.
 * ` __host__ uint64_t get_num_blocks(uint64_t nitems)`: Given nitems to work with, this gives the number of blocks such that every item has a unique cooperative group.
 * `__host__ uint64_t get_block_size(uint64_t nitems_to_insert)`: Get the block size for nitems.
 
@@ -41,65 +41,29 @@ Device API / Classes
 TCF Deletes
 ----------
 
-To guarantee that the TCF does not introduce false negatives during deletion, the hash functions used must be depedent. This can be acheived by using XOR power of two hashing, along with linear probing for the backing table (with sufficent probe length, the position of any matching tags will be found by both threads).
-
-An example of deletion behavior can be seen in the test file ```tests/delete_tests.cu```. To include the TCF with deletes, use the following template:
-
-```
-using backing_table = poggers::tables::bucketed_table<
-    uint64_t, uint16_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
-    4, 8, poggers::insert_schemes::linear_insert_bucket_scheme, 400, poggers::probing_schemes::linearProber,
-    poggers::hashers::murmurHasher>;
-
-
-
-using del_TCF = poggers::tables::bucketed_table<
-    uint64_t, uint16_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
-    4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher,
-    poggers::hashers::murmurHasher, true, backing_table>;
-
-```
-
-In addition, insertions do not check for tombstones by default. To enable this behavior, use ```tcf->insert_with_delete``` instead of ```tcf->insert```. This comes with a small performance hit of 1.1e9 inserts per second instead of 1.3e9.
+Insertions do not check for tombstones by default. To enable this behavior, use ```tcf->insert_with_delete``` instead of ```tcf->insert```. This comes with a small performance hit of 1.1e9 inserts per second instead of 1.3e9.
 
 Configuration
 --------------
 
-The TCF takes in the following template parameters:
+The TCF Wrapper takes in the following template parameters:
 
-* `key type`: type of input keys
-* `value type`: type of input values
-* `storage type`: This specificies how the key, value pair are stored
-* `cooperative group size`: size of the cooperative groups
-* `bucket Size`: how many key, value pairs can be stored in each bucket
-* `probing scheme`: how the filter traverses buckets
-* `insertion scheme`: how the filter chooses to insert into selected buckets (double hashing, power-of-two-hashing, etc.)
-* `hash function`: how keys are hashed
-* `has backing table`: true if a backing table is used. False by default
-* `backing table type`: type of the backing table. None by default
+* `key type`: type of input keys. This must be at least `key_bits` bits.
+* `value type`: type of input values. This must be at least `val_bits` bits.
+* `key_bits`: how many bits are stored per key in the filter.
+* `val bits`: how many bits are stored per value in the filter.
+* `cooperative_group_size`: how many threads are assigned per key.
+* `bucket size`: how many keys are stored per bucket.
 
-Supported configurations:
+For example, the tcf with `64` bit keys and `16` bit values, storing them together in one `uint32_t`, with `4` threads per key and `16` keys per bucket, would be:
 
-To replicate the results of our paper, we support the following configurations:
-
-* `key type`: uint64_t
-* `value type`: uint8_t, uint16_t, uint32_t
-* `storage type`: `bit_grouped_container<tag_bits, val_bits>`: this type tightly packs keys and values together, storing the lower tag_bits from a key and the lower val_bits from a value. To run with key_only, set value bits to 0.
-* `cooperative group size`: 1,2,4,8,16,32
-* `bucket Size`: any positive integer
-* `probing scheme`: double hashing, linear probing, two-choice hash, XOR two-choice hash.
-* `Insertion scheme`: insert into any bucket, insert into least full bucket.
-* `ash function`: murmurhash
+`poggers::data_structs::tcf_wrapper<uint64_t, uint16_t, 16, 16, 4, 16>::tcf`.
 
 Building
 --------
 The TCF components are header only, so linking the underlying library is sufficient to include the TCF.
 
-Building CMake inside of the directory will add tests.
+Building CMake inside of the directory will add the tests.
 
 
 Running Tests
@@ -107,10 +71,12 @@ Running Tests
 
 Several tests exist to showcase the behavior/performance of the TCF
 
-* `test_cg_variations`: Iterate over all of the cooperative group options for the primary table and record their throughput.
-* `delete_tests`: Test the delete TCF on insertion, query, and deleting 50% of items.
-* `sawtooth_test`: Fill the delete TCF to 90% load factor, then delete items in batches.
-* `speed_tests`: Test speed of TCF and delete TCF on basic ops.
+* `test_cg_variations`: Iterate over all of the cooperative group options for the and record their throughput on insertions and queries.
+* `delete_tests`: Test the TCF on insertions, queries, and deleting 50% of inserted items.
+* `sawtooth_test`: Fill the TCF to 90% load factor, then delete items in batches.
+* `speed_tests`: Test speed of TCF on basic ops.
+
+* `test_mhm_tcf`: test the configuration of the TCF used in MetaHipMer.
 
 
 Contributing

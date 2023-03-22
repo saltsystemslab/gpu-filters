@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
-ConfigureExecutable(test_key_val_pair "${CMAKE_CURRENT_SOURCE_DIR}/src/test_key_val_pair.cu" "${POGGERS_TESTS_BINARY_DIR}")
-
 ConfigureExecutable(speed_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/speed_tests.cu" "${POGGERS_TESTS_BINARY_DIR}")
-
-ConfigureExecutable(bucket_speed_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/bucket_speed_tests.cu" "${POGGERS_TESTS_BINARY_DIR}")
 
 ConfigureExecutable(test_cg_variations "${CMAKE_CURRENT_SOURCE_DIR}/src/test_cg_variations.cu" "${POGGERS_TESTS_BINARY_DIR}")
 

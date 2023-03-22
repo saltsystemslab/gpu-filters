@@ -39,7 +39,7 @@ template<>
 struct bytetype<2> : return_<uint16_t> {};
 
 template<>
-struct bytetype<1> : return_<uint8_t> {};
+struct bytetype<1> : return_<uint16_t> {};
 
 
 template <typename T>

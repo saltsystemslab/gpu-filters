@@ -393,7 +393,7 @@ public:
 	}
 
 	__host__ uint64_t get_block_size(uint64_t nitems_to_insert){
-		return 1024;
+		return 512;
 	}
 
 

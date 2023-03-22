@@ -66,6 +66,9 @@
 #include <poggers/probing_schemes/xor_power_of_two.cuh>
 
 
+#include <poggers/data_structs/tcf.cuh>
+
+
 
 #include <stdio.h>
 #include <iostream>
@@ -127,23 +130,25 @@
 // using tiny_static_table_4 = poggers::tables::static_table<uint64_t, uint16_t, poggers::representations::shortened_key_val_wrapper<uint16_t>::key_val_pair, 4, 4, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
 // using tcf = poggers::tables::static_table<uint64_t,uint16_t, poggers::representations::shortened_key_val_wrapper<uint16_t>::key_val_pair, 4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_scheme, 2, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher, true, tiny_static_table_4>;
 
-using tiny_static_table_4 = poggers::tables::static_table<uint64_t, uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 4, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
-using tcf = poggers::tables::static_table<uint64_t,uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_scheme, 2, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher, true, tiny_static_table_4>;
+// using tiny_static_table_4 = poggers::tables::static_table<uint64_t, uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 4, poggers::insert_schemes::bucket_insert, 20, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher>;
+// using tcf = poggers::tables::static_table<uint64_t,uint16_t, poggers::representations::dynamic_container<poggers::representations::key_val_pair,uint16_t>::representation, 4, 16, poggers::insert_schemes::power_of_n_insert_shortcut_scheme, 2, poggers::probing_schemes::doubleHasher, poggers::hashers::murmurHasher, true, tiny_static_table_4>;
 
 
-using del_backing_table = poggers::tables::bucketed_table<
-    uint64_t, uint16_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
-    1, 8, poggers::insert_schemes::linear_insert_bucket_scheme, 20, poggers::probing_schemes::doubleHasher,
-    poggers::hashers::murmurHasher>;
-using del_TCF = poggers::tables::bucketed_table<
-    uint64_t, uint16_t,
-    poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
-        poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
-    1, 8, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher,
-    poggers::hashers::murmurHasher, true, del_backing_table>;
+// using del_backing_table = poggers::tables::bucketed_table<
+//     uint64_t, uint16_t,
+//     poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
+//         poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
+//     1, 8, poggers::insert_schemes::linear_insert_bucket_scheme, 20, poggers::probing_schemes::doubleHasher,
+//     poggers::hashers::murmurHasher>;
+// using del_TCF = poggers::tables::bucketed_table<
+//     uint64_t, uint16_t,
+//     poggers::representations::dynamic_bucket_container<poggers::representations::dynamic_container<
+//         poggers::representations::bit_grouped_container<16, 16>::representation, uint16_t>::representation>::representation,
+//     1, 8, poggers::insert_schemes::power_of_n_insert_shortcut_bucket_scheme, 2, poggers::probing_schemes::XORPowerOfTwoHasher,
+//     poggers::hashers::murmurHasher, true, del_backing_table>;
 
+
+using tcf = poggers::data_structs::tcf_wrapper<uint64_t, uint16_t, 16, 16, 4, 16>::tcf;
 
 
 // shortened_key_val_wrapper
@@ -774,27 +779,7 @@ __host__ poggers::sizing::variadic_size generate_size(int nbits){
 
 int main(int argc, char** argv) {
 
-   // poggers::sizing::size_in_num_slots<1> first_size_20(1ULL << 20);
-   // printf("2^20\n");
-   // test_speed<table_type, uint64_t, uint64_t>(&first_size_20);
-
-   // poggers::sizing::size_in_num_slots<1> first_size_22(1ULL << 22);
-   // printf("2^22\n");
-   // test_speed<table_type, uint64_t, uint64_t>(&first_size_22);
-
-   // poggers::sizing::size_in_num_slots<1> first_size_24(1ULL << 24);
-   // printf("2^24\n");
-   // test_speed<table_type, uint64_t, uint64_t>(&first_size_24);
-
-   // poggers::sizing::size_in_num_slots<1> first_size_26(1ULL << 26);
-   // printf("2^26\n");
-   // test_speed<table_type, uint64_t, uint64_t>(&first_size_26);
-
-   // poggers::sizing::size_in_num_slots<1> first_size_28(1ULL << 28);
-   // printf("2^28\n");
-   // test_speed<table_type, uint64_t, uint64_t>(&first_size_28);
-
-
+   printf("Make sure to make the a local directory called `results` or this will fail\n");
    for (int i = 20; i <= 30; i+=2){
 
       int nbits = i;
@@ -808,32 +793,6 @@ int main(int argc, char** argv) {
 
    }
 
-   for (int i = 20; i <= 30; i++){
-
-      int nbits = i;
-
-       uint64_t nitems = 1ULL << i;
-
-      poggers::sizing::size_in_num_slots<2> test_size (90ULL*nitems/100, 10ULL*nitems/100);
-
-      // //printf("22 size: %llu\n", test_size_24.total());
-      test_speed_batched<del_TCF, uint64_t, uint16_t>("results/delete_test_" + std::to_string(nbits), &test_size, 20);
-
-
-   }
-
-   
-
-
-   // //for MHM TCF size to .9 and .1
-   // poggers::sizing::variadic_size test_size_24 (.9*(1ULL << nbits), .10*(1ULL << nbits));
-
-   // // //printf("22 size: %llu\n", test_size_24.total());
-   // test_speed_batched<del_TCF, uint64_t, uint8_t>("results/deltest_32", &test_size_24, 20);
-   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_24", generate_size(24), 20);
-   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_26", generate_size(26), 20);
-   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_28", generate_size(28), 20);
-   // // test_speed_batched<tcqf, uint64_t, uint16_t>("results/test_30", generate_size(30), 20);
 
    cudaDeviceSynchronize();
 
