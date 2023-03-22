@@ -59,6 +59,23 @@ For example, the tcf with `64` bit keys and `16` bit values, storing them togeth
 
 `poggers::data_structs::tcf_wrapper<uint64_t, uint16_t, 16, 16, 4, 16>::tcf`.
 
+
+The template has the following requirement on the input types:
+
+`sizeof(key_type) >= key_bits`
+
+`sizeof(val_type) >= val_bits`
+
+`key_bits+val_bits <= 64`
+
+
+`Bucket Size % CG Size = 0`
+
+`CG Size = {1,2,4,8,16,32}`.
+
+The TCF uses CUDA's atomicCAS to swap items, so (key,val) pairs are packed into `uint16_t, uint32_t, uint64_t`.
+
+
 Building
 --------
 The TCF components are header only, so linking the underlying library is sufficient to include the TCF.
