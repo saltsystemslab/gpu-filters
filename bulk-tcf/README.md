@@ -85,3 +85,14 @@ There are currently 3 tests available:
 * `tcf_wrapper_tests`: Insert, query, and delete items in batches, recording throughput for all. This test runs using the "bulk_host_tcf" wrapper.
 * `sawtooth_test.cu`: Fill the filter to 90% load factor, before removing items in batches. This queries to guarantee that new and old items are visible, to ensure that there are no false negatives.
 * `tcf_key_val_tests.cu`: Tests the bulk TCF when configured to use key-val pairs.
+
+
+Contributing
+------------
+Contributions via GitHub pull requests are welcome.
+
+
+Authors
+-------
+- Hunter McCoy <hunter@cs.utah.edu>
+- Prashant Pandey <pandey@cs.utah.edu>
