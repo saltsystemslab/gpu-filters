@@ -88,7 +88,7 @@ To replicate the results of our paper, we support the following configurations:
 
 * `key type`: uint64_t
 * `value type`: uint8_t, uint16_t, uint32_t
-* `storage type`: `bit_grouped_container<tag_vits, val_bits>`: this type tightly packs keys and values together, storing the lower tag_bits from a key and the lower val_bits from a value. To run with key_only, set value bits to 0.
+* `storage type`: `bit_grouped_container<tag_bits, val_bits>`: this type tightly packs keys and values together, storing the lower tag_bits from a key and the lower val_bits from a value. To run with key_only, set value bits to 0.
 * `cooperative group size`: 1,2,4,8,16,32
 * `bucket Size`: any positive integer
 * `probing scheme`: double hashing, linear probing, two-choice hash, XOR two-choice hash.
