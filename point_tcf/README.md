@@ -1,9 +1,9 @@
 
 
-Two Choice Filter
-_______________________
+Two Choice Filter (TCF)
+----------
 
-The Two Choice Filter is a fast approximate data structure based on two-choice-hashing. The base version of the TCF supports insertions, queries, and key-value association. To include the base version of the TCF, include ```<poggers/data_structs/tcf.cuh>``` or add the following template:
+The two choice filter (TCF) is a fast approximate data structure based on two-choice hashing. The base version of the TCF supports insertions, queries, and key-value association. To include the base version of the TCF, include ```<poggers/data_structs/tcf.cuh>``` or add the following template:
 
 
 ```
@@ -12,9 +12,10 @@ The Two Choice Filter is a fast approximate data structure based on two-choice-h
 ```
 
 API
-___________________
+----------
 
-#Host API / Classes
+Host API / Classes
+----------
 
 * `sizing_in_num_slots<num_layers>`: This class is used to specify the size and layout of the TCF, 
 (uint64_t layer1_num_slots, uint64_t layer2_num_slots)`
@@ -25,7 +26,8 @@ ___________________
 
 
 
-#Device API / Classes
+Device API / Classes
+----------
 
 * `__device__ bool insert(cg::thread_block_tile<Partition_Size> Insert_tile, Key key, Val val)`: Uses a cooperative group tile to insert `key` and `value` into the filter.
 * `__device__ bool insert_with_delete(cg::thread_block_tile<Partition_Size> Insert_tile, Key key, Val val)`: Insert into the filter, overwriting tombstones if any exist.
@@ -37,7 +39,7 @@ ___________________
 
 
 TCF Deletes
-_______________________
+----------
 
 To guarantee that the TCF does not introduce false negatives during deletion, the hash functions used must be depedent. This can be acheived by using XOR power of two hashing, along with linear probing for the backing table (with sufficent probe length, the position of any matching tags will be found by both threads).
 
@@ -81,3 +83,14 @@ Several tests exist to showcase the behavior/performance of the TCF
 * `delete_tests`: Test the delete TCF on insertion, query, and deleting 50% of items.
 * `sawtooth_test`: Fill the delete TCF to 90% load factor, then delete items in batches.
 * `speed_tests`: Test speed of TCF and delete TCF on basic ops.
+
+
+Contributing
+------------
+Contributions via GitHub pull requests are welcome.
+
+
+Authors
+-------
+- Hunter McCoy <hunter@cs.utah.edu>
+- Prashant Pandey <pandey@cs.utah.edu>
