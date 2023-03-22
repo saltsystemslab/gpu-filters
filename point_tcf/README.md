@@ -66,6 +66,34 @@ using del_TCF = poggers::tables::bucketed_table<
 
 In addition, insertions do not check for tombstones by default. To enable this behavior, use ```tcf->insert_with_delete``` instead of ```tcf->insert```. This comes with a small performance hit of 1.1e9 inserts per second instead of 1.3e9.
 
+Configuration
+--------------
+
+The TCF takes in the following template parameters:
+
+* `key type`: type of input keys
+* `value type`: type of input values
+* `storage type`: This specificies how the key, value pair are stored
+* `Cooperative group size`: Size of the cooperative groups
+* `Bucket Size`: How many key, value pairs can be stored in each bucket
+* `Probing scheme`: How the filter traverses buckets
+* `Insertion scheme`: How the filter chooses to insert into selected buckets (double hashing, power-of-two-hashing, etc.)
+* `Hash function`: How keys are hashed
+* `has backing table`: True if a backing table is used. False by default
+* `backing table type`: Type of the backing table. None by default
+
+Supported configurations:
+
+To replicate the results of our paper, we support the following configurations:
+
+* `key type`: uint64_t
+* `value type`: uint8_t, uint16_t, uint32_t
+* `storage type`: `bit_grouped_container<key_vits, val_bits>`: This type tightly packs keys and values together. To run with key_only, set value bits to 0.
+* `Cooperative group size`: 1,2,4,8,16,32
+* `Bucket Size`: Any positive integer
+* `Probing scheme`: Double hashing, linear probing, two-choice hash, XOR two-choice hash.
+* `Insertion scheme`: Insert into any bucket, insert into least full bucket.
+* `Hash function`: murmurhash
 
 Building
 --------
