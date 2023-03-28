@@ -50,15 +50,14 @@ The TCF Wrapper takes in the following template parameters:
 
 * `key type`: type of input keys. This must be at least `key_bits` bits.
 * `value type`: type of input values. This must be at least `val_bits` bits.
-* `key_bits`: how many bits are stored per key in the filter.
+* `tag bits`: how many bits are stored per key in the filter.
 * `val bits`: how many bits are stored per value in the filter.
-* `cooperative_group_size`: how many threads are assigned per operation.
+* `cooperative group size`: how many threads are assigned per operation.
 * `bucket size`: how many keys are stored per bucket.
 
-For example, the tcf with `64` bit keys and `16` bit values, storing them together in one `uint32_t`, with `4` threads per operation and `16` keys per bucket, would be:
+For example, the tcf with `uint64_t` keys and `uint16_t` values, with `16` bits per key stored as a tag and `16` bits stored per value, with `4` threads per operation and `16` keys per bucket, would be:
 
 `poggers::data_structs::tcf_wrapper<uint64_t, uint16_t, 16, 16, 4, 16>::tcf`.
-
 
 The template has the following requirements on the input types:
 

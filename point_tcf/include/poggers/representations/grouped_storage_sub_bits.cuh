@@ -15,7 +15,7 @@
 
 // };
 
-#define GROUPED_ASSERTS 1
+#define GROUPED_ASSERTS 0
 
 namespace poggers {
 

@@ -786,6 +786,8 @@ int main(int argc, char** argv) {
    using del_TCF_biggest = poggers::data_structs::tcf_wrapper<uint64_t, uint32_t, 32, 32, 4, 16>;
 
 
+   using del_TCF_big_mhm = poggers::data_structs::tcf_wrapper<uint64_t, uint8_t, 26, 6, 1, 16>;
+
    {
 
 
@@ -862,6 +864,19 @@ int main(int argc, char** argv) {
 
       printf("32 bit keys, 32 bit values\n");
       delete_tests<del_TCF_biggest::tcf, uint64_t, uint32_t>(tcf, nitems*.9);
+
+   }
+
+   {
+
+      
+      uint64_t nitems = (1ULL << nbits);
+
+      auto * tcf = del_TCF_big_mhm::generate_on_device(nitems, 42);
+
+
+      printf("26 bit keys, 6 bit values\n");
+      delete_tests<del_TCF_big_mhm::tcf, uint64_t, uint8_t>(tcf, nitems*.9);
 
    }
 

@@ -25,9 +25,9 @@ The class "bulk_host_tcf" provides a wrapper to make is easy to use the bulk tcf
 
 template parameters for the filter: `host_bulk_tcf<input_key_type, store_key_type, store_val_type, wrapper>`
 * `input_key_type`: type of your input keys
-* `store_key_type`: type of keys to be stored in the filter. The size of this determines the false positive rate of the filter.
+* `tag_key_type`: type of keys to be stored in the filter. The size of this determines the false positive rate of the filter.
 * `store_value_type`: Values to both be stored and inserted into the filter.
-* `wrapper`: To use values add the template `wrapper` from `bulk_tcf_key_val_pair` along with your value type. Otherwise, you can template the filter type without a wrapper as `bulk_host_tcf<input_key_type, store_key_type>`
+* `wrapper`: To use values add the template `wrapper` from `bulk_tcf_key_val_pair` along with your value type. Otherwise, you can template the filter type without a wrapper as `bulk_host_tcf<input_key_type, tag_type>`
 
 
 Metadata

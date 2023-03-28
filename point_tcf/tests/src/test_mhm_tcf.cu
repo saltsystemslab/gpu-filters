@@ -119,7 +119,7 @@
 //     poggers::hashers::murmurHasher, true, backing_table>;
 
 
-using TCF = poggers::data_structs::tcf_wrapper<uint64_t, uint8_t, 10, 6, 1, 8>::tcf;
+using TCF = poggers::data_structs::tcf_wrapper<uint64_t, uint8_t, 26, 6, 1, 8>::tcf;
 
 
 #define gpuErrorCheck(ans) { gpuAssert((ans), __FILE__, __LINE__); }
