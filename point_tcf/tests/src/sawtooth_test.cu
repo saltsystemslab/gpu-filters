@@ -31,8 +31,6 @@
 #include <poggers/tables/base_table.cuh>
 #include <poggers/insert_schemes/power_of_n_shortcut.cuh>
 
-#include <poggers/sizing/variadic_sizing.cuh>
-
 #include <poggers/representations/soa.cuh>
 #include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
 
@@ -719,18 +717,6 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 //    poggers::sizing::size_in_num_slots<1>half_split_20(nitems);
 //    test_speed<p2_table, uint64_t, uint16_t>(&half_split_20);
 // }
-
-
-__host__ poggers::sizing::variadic_size generate_size(int nbits){
-
-   uint64_t nslots = (1ULL << nbits);
-
-
-   poggers::sizing::variadic_size internal_size(nslots, nslots/100);
-
-   return internal_size;
-
-}
 
 
 

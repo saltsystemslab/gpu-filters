@@ -31,8 +31,6 @@
 #include <poggers/tables/base_table.cuh>
 #include <poggers/insert_schemes/power_of_n_shortcut.cuh>
 
-#include <poggers/sizing/variadic_sizing.cuh>
-
 #include <poggers/representations/soa.cuh>
 #include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
 
