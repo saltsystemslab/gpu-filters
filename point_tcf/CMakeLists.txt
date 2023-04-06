@@ -56,8 +56,10 @@ set_target_properties(poggers PROPERTIES CUDA_SEPARABLE_COMPILATION ON )
 
 set(POGGERS_TESTS_BINARY_DIR "${CMAKE_BINARY_DIR}/tests")
 
-option(POGGERS_BUILD_TESTS "Configure CMake to build tests" OFF)
+option(POINT_TCF_BUILD_TESTS "Configure CMake to build tests" OFF)
 
+if(POINT_TCF_BUILD_TESTS)
+    add_subdirectory(tests)
+endif(POINT_TCF_BUILD_TESTS)
 
-add_subdirectory(tests)
 

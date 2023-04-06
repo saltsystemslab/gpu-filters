@@ -24,6 +24,7 @@
 #include <thrust/sort.h>
 #include <thrust/scan.h>
 #include <thrust/unique.h>
+#include <thrust/remove.h>
 #include "cub/cub.cuh"
 #include "../moderngpu/src/moderngpu/kernel_merge.hxx"
 

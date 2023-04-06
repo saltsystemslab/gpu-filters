@@ -180,6 +180,8 @@ struct host_bulk_tcf {
 
 		cudaFree(dev_small_keys);
 
+		cudaFree(indices);
+
 		cudaDeviceSynchronize();
 
 		return scrambled_hits;
@@ -281,6 +283,8 @@ struct host_bulk_tcf {
 
 		dev_tcf->bulk_delete(scrambled_hits, num_teams);
 
+		cudaFree(dev_small_keys);
+
 		return scrambled_hits;
 
 	}
@@ -320,6 +324,8 @@ struct host_bulk_tcf {
 		cudaFree(scrambled_hits);
 
 		cudaFree(indices);
+
+		cudaFree(dev_small_keys);
 
 		return return_hits;
 

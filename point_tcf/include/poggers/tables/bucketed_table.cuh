@@ -51,6 +51,24 @@ __global__ void count_fill_kernel(Table * my_table, uint64_t num_buckets, uint64
 
 }
 
+template <typename Table>
+__global__ void count_empty_kernel(Table * my_table, uint64_t num_buckets, uint64_t * counter){
+
+
+	auto tile = my_table->get_my_tile();
+
+  	uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+
+  	if (tid >= num_buckets) return;
+
+  	uint64_t bucket_fill = my_table->get_zeros_of_bucket(tile, tid);
+
+  	if (tile.thread_rank() == 0){
+  		atomicAdd((unsigned long long int *) counter, (unsigned long long int) bucket_fill);
+  	}
+
+}
+
 //probing schemes map keys to buckets/slots in some predefined pattern
 
 
@@ -278,7 +296,13 @@ public:
 		} else {
 
 			if (Is_Recursive){
-				return secondary_table->insert(Insert_tile, key, val);
+
+				uint64_t primary_bucket = my_insert_scheme->get_primary_bucket(Insert_tile, key);
+
+				Key tag = my_insert_scheme->get_tag(Insert_tile, key);
+
+
+				return secondary_table->insert_backing(Insert_tile, primary_bucket, tag, val);
 			}
 
 			
@@ -290,6 +314,23 @@ public:
 
 	}
 
+	__device__ bool insert_backing(cg::thread_block_tile<Partition_Size> Insert_tile, uint64_t primary_bucket, Key key, Val val){
+
+
+		// if (Insert_tile.thread_rank() == 0){ printf("Starting Test\n" );}
+
+		if (my_insert_scheme->insert_backing(Insert_tile, primary_bucket, key, val)){
+			return true;
+		} 
+
+
+		return false;
+
+		
+
+	}
+
+
 	__device__ bool insert_with_delete(cg::thread_block_tile<Partition_Size> Insert_tile, Key key, Val val){
 
 
@@ -300,13 +341,33 @@ public:
 		} else {
 
 			if (Is_Recursive){
-				return secondary_table->insert_with_delete(Insert_tile, key, val);
+
+				uint64_t primary_bucket = my_insert_scheme->get_primary_bucket(Insert_tile, key);
+
+				Key tag = my_insert_scheme->get_tag(Insert_tile, key);
+
+				return secondary_table->insert_with_delete_backing(Insert_tile, primary_bucket, tag, val);
 			}
 
 			
 			return false;
 
 		}
+
+		
+
+	}
+
+	__device__ bool insert_with_delete_backing(cg::thread_block_tile<Partition_Size> Insert_tile, uint64_t primary_bucket, Key key, Val val){
+
+
+		// if (Insert_tile.thread_rank() == 0){ printf("Starting Test\n" );}
+
+		if (my_insert_scheme->insert_with_delete_backing(Insert_tile, primary_bucket, key, val)){
+			return true;
+		} 
+
+		return false;
 
 		
 
@@ -336,7 +397,11 @@ public:
 		} else {
 
 			if (Is_Recursive){
-				return secondary_table->query(Insert_tile, key, val);
+
+				uint64_t primary_bucket = my_insert_scheme->get_primary_bucket(Insert_tile, key);
+				Key tag = my_insert_scheme->get_tag(Insert_tile, key);
+
+				return secondary_table->query_backing(Insert_tile, primary_bucket, tag, val);
 			}
 
 			
@@ -348,26 +413,34 @@ public:
 
 	}
 
+	__device__ bool query_backing(cg::thread_block_tile<Partition_Size> Insert_tile, uint64_t primary_bucket, Key key, Val & val){
+
+		if (my_insert_scheme->query_backing(Insert_tile, primary_bucket, key, val)){
+			return true;
+		} 
+
+		return false;
+
+		
+
+	}
+
+
 	__device__ bool remove(cg::thread_block_tile<Partition_Size> Insert_tile, Key key){
 
 		if (my_insert_scheme->remove(Insert_tile, key)){
-
-			#if POGGERS_REMOVE_DEBUG
-			//uint64_t * debug_counters;
-			atomicAdd((unsigned long long int *) debug_counters, 1ULL);
-
-
-			Val temp_val;
-			if (query(Insert_tile, key, temp_val)){
-				atomicAdd((unsigned long long int *) &debug_counters[1], 1ULL);
-			}
-			#endif
 			
 			return true;
+
 		} else {
 
 			if (Is_Recursive){
-				return secondary_table->remove(Insert_tile, key);
+
+
+				uint64_t primary_bucket = my_insert_scheme->get_primary_bucket(Insert_tile, key);
+				Key tag = my_insert_scheme->get_tag(Insert_tile, key);
+
+				return secondary_table->remove_backing(Insert_tile, primary_bucket, tag);
 			}
 
 
@@ -375,6 +448,22 @@ public:
 			return false;
 		}
 
+
+
+
+	}
+
+
+	__device__ bool remove_backing(cg::thread_block_tile<Partition_Size> Insert_tile, uint64_t primary_bucket, Key key){
+
+		if (my_insert_scheme->remove_backing(Insert_tile, primary_bucket, key)){
+			
+			return true;
+
+		}
+
+
+		return false;
 
 
 
@@ -495,6 +584,14 @@ public:
 		return bucket_fill;
 	}
 
+	__device__ uint64_t get_zeros_of_bucket(cg::thread_block_tile<Partition_Size> tile, uint64_t i){
+
+		uint64_t bucket_fill = my_insert_scheme->check_empty_bucket(tile, Key{0}, Val{0}, i);
+
+		return Bucket_Size - bucket_fill;
+	}
+
+
 	__host__ uint64_t get_fill(){
 
 
@@ -547,6 +644,58 @@ public:
 
 	}
 
+
+	__host__ uint64_t get_empty(){
+
+
+
+		my_type * host_version;
+
+		cudaMallocHost((void **)&host_version, sizeof(my_type));
+
+		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+
+
+		#if POGGERS_REMOVE_DEBUG
+		printf("****DEBUG TCF REMOVE****\n");
+		printf("Deleted %llu keys, found %llu of them after removal\n", host_version->debug_counters[0], host_version->debug_counters[1]);
+
+		#endif
+
+		uint64_t num_buckets = host_version->my_insert_scheme->host_get_num_buckets();
+
+		uint64_t lower_val = 0;
+
+		if (Is_Recursive){
+			lower_val = host_version->secondary_table->get_fill();
+		}
+
+		
+
+		cudaFreeHost(host_version);
+
+		uint64_t * counter;
+
+		//with num buckets, launch kernel
+		cudaMallocManaged((void **) &counter, sizeof(uint64_t));
+
+		cudaDeviceSynchronize();
+
+		counter[0] = 0;
+
+		count_empty_kernel<my_type><<<this->get_num_blocks(num_buckets), this->get_block_size(num_buckets)>>>(this, num_buckets, counter);
+		
+		cudaDeviceSynchronize();
+
+		uint64_t return_val = counter[0];
+
+		cudaFree(counter);
+
+		return return_val + lower_val;
+
+
+
+	}
 
 
 };

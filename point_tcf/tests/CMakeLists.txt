@@ -10,3 +10,6 @@ ConfigureExecutable(delete_tests "${CMAKE_CURRENT_SOURCE_DIR}/src/delete_tests.c
 
 ConfigureExecutable(sawtooth_test "${CMAKE_CURRENT_SOURCE_DIR}/src/sawtooth_test.cu" "${POGGERS_TESTS_BINARY_DIR}")
 
+
+ConfigureExecutable(fused_sawtooth_test "${CMAKE_CURRENT_SOURCE_DIR}/src/fused_sawtooth_test.cu" "${POGGERS_TESTS_BINARY_DIR}")
+

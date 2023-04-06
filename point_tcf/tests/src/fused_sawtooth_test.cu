@@ -167,7 +167,7 @@ __global__ void print_tid_kernel(Filter * filter, Key * keys, Val * vals, uint64
 }
 
 template <typename Filter, typename Key, typename Val>
-__global__ void speed_insert_kernel(Filter * filter, Key * keys, Val * vals, uint64_t nvals, uint64_t * misses){
+__global__ void speed_insert_kernel(Filter * filter, Key * keys, uint64_t nvals, uint64_t * misses){
 
    auto tile = filter->get_my_tile();
 
@@ -175,15 +175,14 @@ __global__ void speed_insert_kernel(Filter * filter, Key * keys, Val * vals, uin
 
    if (tid >= nvals) return;
 
+   Val test_val = 0;
+   test_val+=0;
 
-
-
-   if (!filter->insert(tile, keys[tid], vals[tid]) && tile.thread_rank() == 0){
+   if (!filter->insert(tile, keys[tid], test_val) && tile.thread_rank() == 0){
       atomicAdd((unsigned long long int *) misses, 1ULL);
    } else{
 
-      Val test_val = 0;
-      test_val+=0;
+
       if (!filter->query(tile, keys[tid], test_val)){
          printf("Failure on insert query, %llu\n", keys[tid]);
       }
@@ -196,7 +195,7 @@ __global__ void speed_insert_kernel(Filter * filter, Key * keys, Val * vals, uin
 
 
 template <typename Filter, typename Key, typename Val>
-__global__ void speed_insert_with_delete_kernel(Filter * filter, Key * keys, Val * vals, uint64_t nvals, uint64_t * misses){
+__global__ void speed_insert_with_delete_kernel(Filter * filter, Key * keys, uint64_t nvals, uint64_t * misses){
 
    auto tile = filter->get_my_tile();
 
@@ -204,17 +203,16 @@ __global__ void speed_insert_with_delete_kernel(Filter * filter, Key * keys, Val
 
    if (tid >= nvals) return;
 
+   Val test_val = 0;
+   test_val+=0;
 
 
-
-   if (!filter->insert_with_delete(tile, keys[tid], vals[tid]) && tile.thread_rank() == 0){
+   if (!filter->insert_with_delete(tile, keys[tid], test_val) && tile.thread_rank() == 0){
 
       //printf("Failed to add %llu\n", keys[tid]);
       atomicAdd((unsigned long long int *) misses, 1ULL);
    } else{
 
-      Val test_val = 0;
-      test_val+=0;
       if (!filter->query(tile, keys[tid], test_val)){
          printf("Failure on insert delete query %llu\n", keys[tid]);
       }
@@ -350,7 +348,7 @@ __global__ void speed_delete_single_thread(Filter * filter, Key * keys, uint64_t
 
 
 template <typename Filter, typename Key, typename Val>
-__global__ void speed_query_kernel(Filter * filter, Key * keys, Val * vals, uint64_t nvals, uint64_t * query_misses, uint64_t * query_failures){
+__global__ void speed_query_kernel(Filter * filter, Key * keys, uint64_t nvals, uint64_t * query_misses, uint64_t * query_failures){
 
    auto tile = filter->get_my_tile();
 
@@ -368,100 +366,13 @@ __global__ void speed_query_kernel(Filter * filter, Key * keys, Val * vals, uint
       atomicAdd((unsigned long long int *) query_misses, 1ULL);
    } else {
 
-      if (val != vals[tid] && tile.thread_rank() == 0){
+      if (val != 0 && tile.thread_rank() == 0){
          atomicAdd((unsigned long long int *) query_failures, 1ULL);
       }
 
    }
    //assert(filter->query(tile, keys[tid], val));
 
-
-}
-
-template <typename Filter, typename Key, typename Val, typename Sizing_Type>
-__host__ void test_speed(Sizing_Type * Initializer){
-
-   uint64_t nitems = Initializer->total()*.9;
-
-   Key * host_keys = generate_data<Key>(nitems);
-   Val * host_vals = generate_data<Val>(nitems);
-
-   Key * dev_keys;
-
-   Val * dev_vals;
-
-   cudaMalloc((void **)& dev_keys, nitems*sizeof(Key));
-   cudaMalloc((void **)& dev_vals, nitems*sizeof(Val));
-
-   cudaMemcpy(dev_keys, host_keys, nitems*sizeof(Key), cudaMemcpyHostToDevice);
-   cudaMemcpy(dev_vals, host_vals, nitems*sizeof(Val), cudaMemcpyHostToDevice);
-
-
-   uint64_t * misses;
-
-   cudaMallocManaged((void **)& misses, sizeof(uint64_t)*3);
-   cudaDeviceSynchronize();
-
-   misses[0] = 0;
-   misses[1] = 0;
-   misses[2] = 0;
-
-   //static seed for testing
-   Filter * test_filter = Filter::generate_on_device(Initializer, 42);
-
-   cudaDeviceSynchronize();
-
-   //print_tid_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(nitems),test_filter->get_block_size(nitems)>>>(test_filter, dev_keys, dev_vals, nitems);
-
-   cudaDeviceSynchronize();
-
-   auto insert_start = std::chrono::high_resolution_clock::now();
-
-   //add function for configure parameters - should be called by ht and return dim3
-   speed_insert_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(nitems),test_filter->get_block_size(nitems)>>>(test_filter, dev_keys, dev_vals, nitems, misses);
-   cudaDeviceSynchronize();
-   auto insert_end = std::chrono::high_resolution_clock::now();
-
-
-   cudaMemcpy(dev_keys, host_keys, nitems*sizeof(Key), cudaMemcpyHostToDevice);
-   cudaMemcpy(dev_vals, host_vals, nitems*sizeof(Val), cudaMemcpyHostToDevice);
-
-
-   cudaDeviceSynchronize();
-
-   auto query_start = std::chrono::high_resolution_clock::now();
-
-   speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(nitems),test_filter->get_block_size(nitems)>>>(test_filter, dev_keys, dev_vals, nitems, &misses[1], &misses[2]);
-   cudaDeviceSynchronize();
-   auto query_end = std::chrono::high_resolution_clock::now();
-
-
-
-
-   std::chrono::duration<double> insert_diff = insert_end-insert_start;
-   std::chrono::duration<double> query_diff = query_end-query_start;
-
-
-   cudaDeviceSynchronize();
-   std::cout << "Inserted " << nitems << " in " << insert_diff.count() << " seconds\n";
-   std::cout << "Queried " << nitems << " in " << query_diff.count() << " seconds\n";
-
-   printf("Inserts/Queries: %f / %f\n", 1.0*nitems/insert_diff.count(), 1.0*nitems/query_diff.count());
-   printf("%llu / %llu / %llu\n", misses[0], misses[1], misses[2]);
-
-   cudaDeviceSynchronize();
-
-   cudaFree(misses);
-
-   cudaDeviceSynchronize();
-
-   cudaFree(dev_keys);
-   cudaFree(dev_vals);
-
-   Filter::free_on_device(test_filter);
-
-   free(host_keys);
-   free(host_vals);
 
 }
 
@@ -565,6 +476,8 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 
    uint64_t items_per_partition = nitems/num_partitions;
 
+   uint64_t query_nitems = items_per_partition*num_partitions;
+
 
    Key ** inserted_keys = (Key **) malloc(sizeof(Key *)*num_partitions);
 
@@ -588,18 +501,13 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 
    cudaMalloc((void **)&dev_keys, sizeof(Key)*items_per_partition);
 
-   Val * dev_vals;
+   Key * query_keys;
 
-   cudaMalloc((void **)&dev_vals, sizeof(Val)*items_per_partition);
+   cudaMalloc((void **)&query_keys, sizeof(Key)*query_nitems);
 
    //static seed for testing
    Filter * test_filter = Filter::generate_on_device(Initializer, 42);
 
-   Val * host_vals = generate_data<Val>(items_per_partition);
-
-   for (uint64_t i=0; i< items_per_partition; i++){
-      host_vals[i] = 0;
-   }
 
    uint64_t * misses;
 
@@ -626,11 +534,13 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 
       cudaMemcpy(dev_keys, inserted_keys[i], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
 
-      cudaMemcpy(dev_vals, host_vals, sizeof(Val)*items_per_partition, cudaMemcpyHostToDevice);
+      //cudaMemcpy(dev_vals, host_vals, sizeof(Val)*items_per_partition, cudaMemcpyHostToDevice);
+
+      cudaMemcpy(query_keys + items_per_partition*i, inserted_keys[i], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
 
       cudaDeviceSynchronize();
 
-      speed_insert_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition),test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, dev_vals, items_per_partition, misses);
+      speed_insert_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition),test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, items_per_partition, misses);
    
 
       //speed_insert_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition),test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, dev_vals, items_per_partition, misses);
@@ -651,8 +561,6 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 
       cudaMemcpy(dev_keys, inserted_keys[i], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
 
-      cudaMemcpy(dev_vals, host_vals, sizeof(Val)*items_per_partition, cudaMemcpyHostToDevice);
-
       cudaDeviceSynchronize();
 
       auto delete_start = std::chrono::high_resolution_clock::now();
@@ -668,16 +576,17 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
       //std::cout << "Deleted " << items_per_partition << " in " << elapsed(delete_start, delete_end) << std::endl;
 
       //false negative query
-      for (int j = i+1; j < num_partitions; j++){
 
-         cudaMemcpy(dev_keys, inserted_keys[j], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
+      // for (int j = i+1; j < num_partitions; j++){
 
-         cudaDeviceSynchronize();
+      //    cudaMemcpy(dev_keys, inserted_keys[j], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
 
-         speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition), test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, dev_vals, items_per_partition, misses+3, misses+4);
+      //    cudaDeviceSynchronize();
 
-         cudaDeviceSynchronize();
-      }
+      //    speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition), test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, items_per_partition, misses+3, misses+4);
+
+      //    cudaDeviceSynchronize();
+      // }
 
       //and finally re-add
 
@@ -685,8 +594,9 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 
       cudaMemcpy(dev_keys, new_keys[i], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
 
+      cudaMemcpy(query_keys + items_per_partition*i, new_keys[i], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
 
-      speed_insert_with_delete_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition),test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, dev_vals, items_per_partition, misses+5);
+      speed_insert_with_delete_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition),test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, items_per_partition, misses+5);
 
       cudaDeviceSynchronize();
 
@@ -701,25 +611,23 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
       } 
 
 
+      auto query_start = std::chrono::high_resolution_clock::now();
 
-      //swap order
-      for (int k = 0; k<=i; k++){
+      speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(query_nitems), test_filter->get_block_size(query_nitems)>>>(test_filter, query_keys, query_nitems, misses+3, misses+4);
 
+      cudaDeviceSynchronize();
 
-         cudaMemcpy(dev_keys, new_keys[k], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
-
-         cudaDeviceSynchronize();
-
-         speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_per_partition), test_filter->get_block_size(items_per_partition)>>>(test_filter, dev_keys, dev_vals, items_per_partition, misses+3, misses+4);
-
-
-      }
-
-    
+      auto query_end = std::chrono::high_resolution_clock::now();
       // printf("Done with batch: %d\n", i);
       // printf("Insert fails: %llu, delete misses: %llu, delete value mismatch: %llu, False negatives: %llu, false positives: %llu, re-add misses %llu\n", misses[0], misses[1], misses[2], misses[3], misses[4], misses[5]);
 
+      double delete_throughput = 1.0*items_per_partition/elapsed(delete_start, delete_end);
 
+      double query_throughput = 1.0*query_nitems/elapsed(query_start, query_end);
+
+      std::cout << "Delete time " << elapsed(delete_start, delete_end) << ", throughput " << std::fixed << delete_throughput << std::endl;
+
+      //std::cout << "query time " << elapsed(query_start, query_end) << ", throughput " << query_throughput << std::endl;
    
       //printf("Fill: %llu, Empty: %llu\n", test_filter->get_fill(), test_filter->get_empty());
 
@@ -755,7 +663,7 @@ __host__ void sawtooth_test(Sizing_Type * Initializer, int num_partitions, int n
 
    cudaFree(dev_keys);
 
-   cudaFree(dev_vals);
+   cudaFree(query_keys);
 
    Filter::free_on_device(test_filter);
 

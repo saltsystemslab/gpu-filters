@@ -119,7 +119,7 @@
 //     poggers::hashers::murmurHasher, true, backing_table>;
 
 
-using TCF = poggers::data_structs::tcf_wrapper<uint64_t, uint8_t, 26, 6, 1, 8>::tcf;
+using TCF = poggers::data_structs::tcf_wrapper<uint64_t, uint8_t, 26, 6, 1, 16>::tcf;
 
 
 #define gpuErrorCheck(ans) { gpuAssert((ans), __FILE__, __LINE__); }
@@ -739,7 +739,7 @@ __host__ void test_tcf_speed(const std::string& filename, int num_bits, int num_
    //time to output
 
 
-   printf("nitems: %llu, insert misses: %llu, query missed: %llu, query wrong %llu, fp missed %llu, fp wrong %llu\n", nitems, misses[0], misses[1], misses[2], misses[3], misses[4]);
+   printf("nitems: %llu, insert misses: %llu, query missed: %llu, query mismatch %llu, fp missed %llu, fp mismatch %llu\n", nitems, misses[0], misses[1], misses[2], misses[3], misses[4]);
 
    std::chrono::duration<double> summed_insert_diff = std::chrono::nanoseconds::zero();
 

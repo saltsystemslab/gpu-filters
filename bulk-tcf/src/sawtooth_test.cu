@@ -97,11 +97,11 @@ __host__ std::chrono::duration<double> split_insert_timing(host_bulk_tcf<Large_K
 
   	std::chrono::duration<double> diff = end-start;
 
-  	std::cout << "Inserted " << nvals << " in " << diff.count() << " seconds\n";
+  	//std::cout << "Inserted " << nvals << " in " << diff.count() << " seconds\n";
 
-  	printf("Inserts per second: %f\n", nvals/diff.count());
+  	//printf("Inserts per second: %f\n", nvals/diff.count());
 
-  	printf("Misses %llu\n", misses[0]);
+  	//printf("Misses %llu\n", misses[0]);
 
   	cudaDeviceSynchronize();
 
@@ -142,11 +142,11 @@ __host__ std::chrono::duration<double> bulk_query_timing(host_bulk_tcf<Large_Key
   	std::chrono::duration<double> diff = end-start;
 
 
-  	std::cout << "Queried " << nvals << " in " << diff.count() << " seconds\n";
+  	//std::cout << "Queried " << nvals << " in " << diff.count() << " seconds\n";
 
-  	printf("Bulk Queries per second: %f\n", nvals/diff.count());
+  	//printf("Bulk Queries per second: %f\n", nvals/diff.count());
 
-  	printf("Misses %llu\n", misses[0]);
+  	//printf("Misses %llu\n", misses[0]);
 
   	cudaDeviceSynchronize();
 
@@ -192,11 +192,11 @@ __host__ std::chrono::duration<double> bulk_fp_timing(host_bulk_tcf<Large_Keys, 
   	std::chrono::duration<double> diff = end-start;
 
 
-  	std::cout << "FP Queried " << nvals << " in " << diff.count() << " seconds\n";
+  	//std::cout << "FP Queried " << nvals << " in " << diff.count() << " seconds\n";
 
-  	printf("FP Sorted Bulk Queries per second: %f\n", nvals/diff.count());
+  	//printf("FP Sorted Bulk Queries per second: %f\n", nvals/diff.count());
 
-  	printf("Misses %llu, ratio: %f\n", misses[0], 1.0 * (nvals - misses[0])/nvals);  
+  	//printf("Misses %llu, ratio: %f\n", misses[0], 1.0 * (nvals - misses[0])/nvals);  
 
   	cudaDeviceSynchronize();
 
@@ -242,11 +242,11 @@ __host__ std::chrono::duration<double> bulk_delete_timing(host_bulk_tcf<Large_Ke
   	std::chrono::duration<double> diff = end-start;
 
 
-  	std::cout << "Deleted " << nvals << " in " << diff.count() << " seconds\n";
+  	//std::cout << "Deleted " << nvals << " in " << diff.count() << " seconds\n";
 
-  	printf("Bulk Deletes per second: %f\n", nvals/diff.count());
+  	//printf("Bulk Deletes per second: %f\n", nvals/diff.count());
 
-  	printf("Misses %llu\n", misses[0]);
+  	//printf("Misses %llu\n", misses[0]);
 
   	cudaDeviceSynchronize();
 
@@ -432,7 +432,7 @@ __host__ void sawtooth_test(int num_bits, int num_partitions, int num_rounds){
 
    for (int i = 0; i < num_partitions; i++){
 
-      printf("Starting setup round %d\n",i);
+      //printf("Starting setup round %d\n",i);
 
       cudaMemcpy(dev_keys, inserted_keys[i], sizeof(Key)*items_per_partition, cudaMemcpyHostToDevice);
 
@@ -496,6 +496,8 @@ __host__ void sawtooth_test(int num_bits, int num_partitions, int num_rounds){
       split_insert_timing(tcf, dev_keys, items_per_partition, misses+4);
 
       cudaDeviceSynchronize();
+
+      printf("Done with batch: %d\n", i);
    
 
 
@@ -506,6 +508,7 @@ __host__ void sawtooth_test(int num_bits, int num_partitions, int num_rounds){
 
    printf("Insert fails: %llu, delete misses: %llu, False negatives: %llu, re-add misses %llu\n", misses[0], misses[1],  misses[3], misses[4]);
 
+   Filter::host_free_tcf(tcf);
 
    return;
 

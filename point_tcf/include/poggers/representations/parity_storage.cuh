@@ -34,22 +34,22 @@ namespace representations {
 
 //Storage keeps items (Val, Key) in memory
 //Key retreived via OR with lower bits
-template<size_t key_bits, size_t val_bits>
-struct internal_key_val_storage : poggers::helpers::bytetype< ((key_bits+val_bits-1)/8+1) >{};
+template<size_t key_bits, size_t val_bits, size_t parity_bits>
+struct internal_key_val_storage : poggers::helpers::bytetype< ((key_bits+val_bits+parity_bits-1)/8+1) >{};
 
 
-template<typename Key, size_t key_bits>
-__host__ __device__ Key clip_to_tag(Key ext_key){
+template<typename Key, size_t key_bits, size_t parity_bits>
+__host__ __device__ Key clip_to_tag(Key ext_key, int parity){
 
-	ext_key = ext_key & ((1ULL << (key_bits-1))-1);
+	ext_key = parity << key_bits + ext_key & ((1ULL << key_bits)-1);
 
-	if ((ext_key) == 0){
+	if (ext_key == 0){
 		ext_key += 1;
 	}
 
 	//my_key += (my_key == Key{0});
 
-	if ((ext_key) == ((1ULL << (key_bits-1))-1)){
+	if (ext_key == ((1ULL << (key_bits+parity_bits))-1)){
 		ext_key -=1;
 	}
 
@@ -58,11 +58,11 @@ __host__ __device__ Key clip_to_tag(Key ext_key){
 }
 
 
-template<typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
+template<typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits, size_t parity_bits>
 __host__ __device__ Key retrieve_key_from_storage(Storage my_storage){
 
 	//split 
-	return (my_storage & ((1ULL << key_bits) -1));
+	return (my_storage & ((1ULL << key_bits+parity_bits) -1));
 
 	// Storage mask = ((((Storage) 0) << (sizeof(Val)*8)) -1) << sizeof(Key);
 
@@ -70,7 +70,7 @@ __host__ __device__ Key retrieve_key_from_storage(Storage my_storage){
 
 }
 
-template<typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
+template<typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits, size_t parity_bits>
 __host__ __device__ Val retrieve_val_from_storage(Storage my_storage){
 
 	//split 
@@ -80,7 +80,7 @@ __host__ __device__ Val retrieve_val_from_storage(Storage my_storage){
 
 
 
-	Storage mask = lower_bits << key_bits;
+	Storage mask = lower_bits << (key_bits+parity_bits);
 
 
 	//printf("%x empty, %x lower, %x val mask\n", Storage{0}, lower_bits, mask);
@@ -89,15 +89,15 @@ __host__ __device__ Val retrieve_val_from_storage(Storage my_storage){
 
 	// printf("Storage is %lx, Mask is %lx\n", my_storage, mask);
 
-	Val my_val = (my_storage & mask) >> key_bits;
+	Val my_val = (my_storage & mask) >> (key_bits+parity_bits);
 
 	return my_val;
 
 }
 
 
-template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
-__host__ __device__ Storage join_in_storage(Key my_key, Val my_val){
+template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits, size_t parity_bits>
+__host__ __device__ Storage join_in_storage(Key my_key, Val my_val, int parity){
 
 	Storage empty_storage = Storage{0};
 
@@ -118,10 +118,10 @@ __host__ __device__ Storage join_in_storage(Key my_key, Val my_val){
 	// 	my_key -=1;
 	// }
 
-	//my_key = clip_to_tag<Key, key_bits>(my_key);
+	my_key = clip_to_tag<Key, key_bits, parity_bits>(my_key, parity_bits);
 
 
-	empty_storage += ((uint64_t) my_val) << key_bits;
+	empty_storage += ((uint64_t) my_val) << (key_bits+parity_bits);
 
 	empty_storage += my_key;
 
@@ -130,7 +130,7 @@ __host__ __device__ Storage join_in_storage(Key my_key, Val my_val){
 }
 
 
-template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
+template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits, size_t parity_bits>
 __host__ __device__ Storage join_in_storage_tombstone(){
 
 	Storage empty_storage = Storage{0};
@@ -140,9 +140,9 @@ __host__ __device__ Storage join_in_storage_tombstone(){
 	//clip key and val
 	Val my_val = 0;
 
-	Key my_key = (1ULL << key_bits)-1;
+	Key my_key = (1ULL << (key_bits+parity_bits))-1;
 
-	empty_storage |= ((uint64_t) my_val) << key_bits;
+	empty_storage |= ((uint64_t) my_val) << (key_bits+parity_bits);
 
 	empty_storage |= my_key;
 
@@ -151,7 +151,7 @@ __host__ __device__ Storage join_in_storage_tombstone(){
 }
 
 
-template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits>
+template <typename Key, typename Val, typename Storage, size_t key_bits, size_t val_bits, size_t parity_bits>
 __host__ __device__ Storage join_in_storage_empty(){
 
 	Storage empty_storage = Storage{0};
@@ -163,7 +163,7 @@ __host__ __device__ Storage join_in_storage_empty(){
 
 	Key my_key = Key{0};
 
-	empty_storage |= ((uint64_t) my_val) << key_bits;
+	empty_storage |= ((uint64_t) my_val) << (key_bits+parity_bits);
 
 	empty_storage |= my_key;
 
@@ -173,7 +173,7 @@ __host__ __device__ Storage join_in_storage_empty(){
 
 
 
-template <typename Key, typename Val, size_t key_bits, size_t val_bits>
+template <typename Key, typename Val, size_t key_bits, size_t val_bits, size_t parity_bits>
 //alignas(Recursive_size<(sizeof(Key) + sizeof(Val))>::result) 
 struct  grouped_bits_pair {
 
@@ -185,7 +185,7 @@ struct  grouped_bits_pair {
 		static_assert(sizeof(Key)*8 >= key_bits);
 		static_assert(sizeof(Val)*8 >= val_bits);
 
-		using storage_type = typename internal_key_val_storage<key_bits, val_bits>::type;
+		using storage_type = typename internal_key_val_storage<key_bits, val_bits, parity_bits>::type;
 
 		storage_type my_storage;
 
@@ -201,7 +201,7 @@ struct  grouped_bits_pair {
 		}
 
 		//constructor
-		__host__ __device__ grouped_bits_pair (Key const & key, Val const & val)
+		__host__ __device__ grouped_bits_pair (Key const & key, Val const & val, int parity)
 		: my_storage(join_in_storage<Key, Val, storage_type, key_bits, val_bits>(key, val)){}
 
 
@@ -274,14 +274,6 @@ struct  grouped_bits_pair {
 
 		}
 
-		__host__ __device__ Key get_key(){
-
-			Key key = retrieve_key_from_storage<Key, Val, storage_type, key_bits, val_bits>(my_storage);
-
-			return key;
-
-		}
-
 		__host__ __device__ inline static const Key get_tombstone(){
 
 			// if (threadIdx.x+blockIdx.x*blockDim.x == 2){
@@ -291,19 +283,19 @@ struct  grouped_bits_pair {
 			return ((1ULL << key_bits)-1);
 		}
 
-		__host__ __device__ inline bool contains(Key ext_key){
+		__host__ __device__ inline bool contains(Key ext_key, int parity){
 
 			Key key = retrieve_key_from_storage<Key, Val, storage_type, key_bits, val_bits>(my_storage);
 
 			//ext_key = ext_key & ((1ULL << key_bits)-1);
 
-			//ext_key = clip_to_tag<Key, key_bits>(ext_key);
+			ext_key = clip_to_tag<Key, key_bits>(ext_key, parity);
 
 			return (key == ext_key);
 		}
 
 
-		__host__ __device__ static inline Key tag(Key ext_key){
+		__host__ __device__ static inline Key tag(Key ext_key, int parity){
 
 			return clip_to_tag<Key, key_bits>(ext_key);
 

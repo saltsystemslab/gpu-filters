@@ -279,7 +279,8 @@ int main(int argc, char **argv)
 				verbose = true;
 				break;
 			case 'f':
-				fp_queries = strtol(optarg, &term, 10);
+				printf("Displaying FP queries\n");
+				fp_queries = true;
 				break;
 			case 'n':
 				nbits = strtol(optarg, &term, 10);
@@ -457,6 +458,9 @@ int main(int argc, char **argv)
 
 
 		for (exp = 0; exp < 2*npoints; exp += 2) {
+
+			uint64_t round_fps = 0;
+
 			i = (exp/2)*(nvals/npoints);
 			j = ((exp/2) + 1)*(nvals/npoints);
 			//printf("Round: %d\n", exp/2);
@@ -576,7 +580,7 @@ int main(int argc, char **argv)
 
 				} else {
 
-					fps += nitems-filter_ds.bulk_fp_lookup(othervals, nitems);
+					round_fps += nitems-filter_ds.bulk_fp_lookup(othervals, nitems);
 
 				}
 					
@@ -585,6 +589,13 @@ int main(int argc, char **argv)
 
 			cudaDeviceSynchronize();
 			tv_false_lookup[exp+1][run] = std::chrono::high_resolution_clock::now();
+
+			if (fp_queries){
+				fps += round_fps;
+
+				uint64_t total_round_nitems = nvals/npoints;
+				printf("FP rate of round %d: %f (%lu/%lu)\n", exp/2, 1.0 * round_fps / total_round_nitems, round_fps, total_round_nitems);
+			}
 			
 			
 		}

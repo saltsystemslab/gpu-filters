@@ -1,5 +1,5 @@
-#ifndef LINEAR_INSERT_BUCKET_SCHEME 
-#define LINEAR_INSERT_BUCKET_SCHEME
+#ifndef LINEAR_INSERT_BUCKET_SCHEME_PARITY 
+#define LINEAR_INSERT_BUCKET_SCHEME_PARITY
 
 
 #include <cuda.h>
@@ -36,7 +36,7 @@ template <typename Key, typename Val, std::size_t Partition_Size, std::size_t Bu
 
 //template <typename Key, std::size_t Partition_Size, template <typename, std::size_t> class Hasher, std::size_t Max_Probes>
 //template <typename Hasher1, typename Hasher2, std::size_t Max_Probes>
-struct __attribute__ ((__packed__)) linear_insert_bucket_scheme {
+struct __attribute__ ((__packed__)) linear_insert_bucket_scheme_parity {
 
 
 	//tag bits change based on the #of bytes allocated per block
@@ -61,7 +61,7 @@ public:
 	//typedef key_type Hasher::key_type;
 	//using key_type = Key;
 	using probing_scheme_type = Probing_Scheme<Key,Partition_Size, Hasher, Max_Probes>;
-	using my_type = linear_insert_bucket_scheme<Key, Val, Partition_Size, Bucket_Size, Internal_Rep, Max_Probes, Hasher, Probing_Scheme>;
+	using my_type = linear_insert_bucket_scheme_parity<Key, Val, Partition_Size, Bucket_Size, Internal_Rep, Max_Probes, Hasher, Probing_Scheme>;
 
 	using rep_type = Internal_Rep<Key, Val, Partition_Size, Bucket_Size>;
 
@@ -77,11 +77,11 @@ public:
 	//pull in hasher - need it's persistent storage
 
 	//define default constructor so cuda doesn't yell
-	__host__ __device__ linear_insert_bucket_scheme(): num_buckets(0), seed(0) {};
+	__host__ __device__ linear_insert_bucket_scheme_parity(): num_buckets(0), seed(0) {};
 
 
 	//only allowed to be defined on CPU
-	__host__ linear_insert_bucket_scheme(rep_type * ext_slots, uint64_t ext_nslots, uint64_t ext_seed): num_buckets(ext_nslots), seed(ext_seed){
+	__host__ linear_insert_bucket_scheme_parity(rep_type * ext_slots, uint64_t ext_nslots, uint64_t ext_seed): num_buckets(ext_nslots), seed(ext_seed){
 		
 		slots = ext_slots;
 	}
@@ -209,178 +209,22 @@ public:
 
 	}
 
+	__device__ Key get_parity_key(Key key, int i){
 
+		Key mask =  ((1ULL << 5)-1);
 
-	//V2 functions
-	__device__ __inline__ bool insert_backing(cg::thread_block_tile<Partition_Size> insert_tile, uint64_t primary_bucket, Key key, Val val){
-
-		//first step is to init probing scheme
-
-		//if(insert_tile.thread_rank() == 0) printf("Inside of power of n insert\n");
-
-
-
-		probing_scheme_type insert_probing_scheme(seed);
-
-		uint64_t start_slot = primary_bucket;
-
-		bool looped = false;
-
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
-
-       		insert_slot = insert_slot % num_buckets;
-
-       		if (insert_slot == start_slot && looped) return false;
-
-
-       		if (insert_into_bucket(insert_tile, key, val , insert_slot)) return true;
-
-       		looped = true;
-
-       	}  
-
-       	//printf("Probed to %llu with key %llu\n", Max_Probes, key);
-
-     	return false;
-
-	}
-
-
-		__device__ __inline__ bool insert_with_delete_backing(cg::thread_block_tile<Partition_Size> insert_tile, uint64_t primary_bucket, Key key, Val val){
-
-		//first step is to init probing scheme
-
-		//if(insert_tile.thread_rank() == 0) printf("Inside of power of n insert\n");
-
-
-
-		probing_scheme_type insert_probing_scheme(seed);
-
-		uint64_t start_slot = primary_bucket;
-
-		bool looped = false;
-
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
-
-
-       		insert_slot = insert_slot % num_buckets;
-
-       		if (insert_slot == start_slot && looped) return false;
-
-       		
-
-       		if (insert_delete_into_bucket(insert_tile, key, val , insert_slot)) return true;
-
-       		looped = true;
-
-       	}  
-
-
-       	//printf("Probed to %llu with key %llu\n", Max_Probes, key);
-
-
-     	return false;
-
-	}
-
-
-	__device__ __inline__ bool remove_backing(cg::thread_block_tile<Partition_Size> insert_tile, uint64_t primary_bucket, Key key){
-
-		//first step is to init probing scheme
-
-		//if (insert_tile.thread_rank() == 0) printf("Starting outer query!\n");
-
-
-		probing_scheme_type insert_probing_scheme(seed);
-
-		uint64_t start_slot = primary_bucket;
-
-		bool looped = false;
-
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
-
-
-       		insert_slot = insert_slot % num_buckets;
-
-       		if (insert_slot == start_slot && looped) return false;    		
-
-			if (remove_from_bucket(insert_tile, key, insert_slot)){
-
-				//if (insert_tile.thread_rank() == 0) printf("Found in %llu!\n", insert_slot);
-				return true;
-			}
-
-			looped = true;
-
-			//Val fake_val = 0;
-
-			// if (check_empty_bucket(insert_tile, key, fake_val, insert_slot) != Bucket_Size){
-			// 	return false;
-			// }
-     	
-
+		if ((i & mask) != i){
+			printf("Err in setting i: %llx, %d, %llx\n", mask, i, mask & i);
 		}
 
-		//if (insert_tile.thread_rank() == 0) printf("Could not find %d\n", key);
+		Key newkey = (key & ~mask) + i;
 
-		return false;
-
-
-	}
-
-	__device__ __inline__ bool query_backing(cg::thread_block_tile<Partition_Size> insert_tile, uint64_t primary_bucket, Key key, Val& ext_val){
-
-		//first step is to init probing scheme
-
-		//if (insert_tile.thread_rank() == 0) printf("Starting outer query!\n");
-
-		//dummy test
-
-		probing_scheme_type insert_probing_scheme(seed);
-
-
-		uint64_t start_slot = primary_bucket;
-
-		bool looped = false;
-
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
-
-
-       		insert_slot = insert_slot % num_buckets;
-
-       		if (insert_slot == start_slot && looped) return false;
-       		
-
-			if (query_into_bucket(insert_tile, key, ext_val, insert_slot)){
-
-				//if (insert_tile.thread_rank() == 0) printf("Found in %llu!\n", insert_slot);
-				return true;
-			}
-
-			int fill = check_empty_bucket(insert_tile, key, ext_val, insert_slot);
-
-			if (fill != Bucket_Size){
-
-				//printf("Early Execution failure: %d for key %llu\n", fill, key);
-				return false;
-			}
-
-			looped = true;
-     	
-     	
-
+		if ( (newkey & mask) != i){
+			printf("Error in combining\n");
 		}
 
-		//if (insert_tile.thread_rank() == 0) printf("Could not find %d after %llu probes\n", key, Max_Probes);
-
-		return false;
-
-
+		return newkey;
 	}
-
-	//end of new stuff
-
-
 
 	__device__ __inline__ bool insert(cg::thread_block_tile<Partition_Size> insert_tile, Key key, Val val){
 
@@ -392,24 +236,18 @@ public:
 
 		probing_scheme_type insert_probing_scheme(seed);
 
-		uint64_t start_slot = insert_probing_scheme.begin(key);
+		int i = 0;
 
-		bool looped = false;
-
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
-
+		for (uint64_t insert_slot = insert_probing_scheme.begin(key); insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
        		insert_slot = insert_slot % num_buckets;
 
-       		if (insert_slot == start_slot && looped) return false;
+       		//Key parity_key = (key & (~(1ULL << 5)-1)) + i;
 
+       		if (insert_into_bucket(insert_tile, get_parity_key(key, i), val , insert_slot)) return true;
 
-       		if (insert_into_bucket(insert_tile, key, val , insert_slot)) return true;
-
-       		looped = true;
+       		i+=1;
 
        	}  
-
-       	//printf("Probed to %llu with key %llu\n", Max_Probes, key);
 
      	return false;
 
@@ -425,28 +263,20 @@ public:
 
 		probing_scheme_type insert_probing_scheme(seed);
 
-		uint64_t start_slot = insert_probing_scheme.begin(key);
 
-		bool looped = false;
+		int i = 0;
 
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
-
+		for (uint64_t insert_slot = insert_probing_scheme.begin(key); insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
 
        		insert_slot = insert_slot % num_buckets;
 
-       		if (insert_slot == start_slot && looped) return false;
+       		Key insert_key = (key & (~(1ULL << 5)-1)) + i;
 
-       		
+       		if (insert_delete_into_bucket(insert_tile, get_parity_key(key, i), val , insert_slot)) return true;
 
-       		if (insert_delete_into_bucket(insert_tile, key, val , insert_slot)) return true;
-
-       		looped = true;
+       		i+=1;
 
        	}  
-
-
-       	//printf("Probed to %llu with key %llu\n", Max_Probes, key);
-
 
      	return false;
 
@@ -464,11 +294,13 @@ public:
 
 		probing_scheme_type insert_probing_scheme(seed);
 
+		int i = 0;
+
 		for (uint64_t insert_slot = insert_probing_scheme.begin(key); insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
 
 			insert_slot = insert_slot % num_buckets;
 
-			if (query_into_bucket(insert_tile, key, ext_val, insert_slot)){
+			if (query_into_bucket(insert_tile, get_parity_key(key, i), ext_val, insert_slot)){
 
 				found_val = true;
 				return true;
@@ -476,12 +308,15 @@ public:
 
 			//I think this works?
 			//same as check_fill but we just ballot on trying to insert.
-			if (insert_into_bucket(insert_tile, key, val, insert_slot)){
+			if (insert_into_bucket(insert_tile, get_parity_key(key, i), val, insert_slot)){
 
 				found_val = false;
 				return true;
 
 			}
+
+
+			i+=1;
 		}
 
 		
@@ -495,16 +330,18 @@ public:
 
 		//first step is to init probing scheme
 
-		if(insert_tile.thread_rank() == 0) printf("Inside of power of n insert... This should not trigger\n");
+		//if(insert_tile.thread_rank() == 0) printf("Inside of power of n insert\n");
 
 
 		probing_scheme_type insert_probing_scheme(seed);
+
+		int i =0;
 
 		for (uint64_t insert_slot = insert_probing_scheme.begin(key); insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
 
 			insert_slot = insert_slot % num_buckets;
 
-			if (query_into_bucket(insert_tile, key, ext_val, insert_slot)){
+			if (query_into_bucket(insert_tile, get_parity_key(key, i), ext_val, insert_slot)){
 
 				found_val = true;
 
@@ -515,12 +352,14 @@ public:
 
 			//I think this works?
 			//same as check_fill but we just ballot on trying to insert.
-			if (insert_into_bucket(insert_tile, key, val, insert_slot)){
+			if (insert_into_bucket(insert_tile, get_parity_key(key, i), val, insert_slot)){
 
 				found_val = false;
 				return true;
 
 			}
+
+			i+=1;
 		}
 
 		
@@ -538,30 +377,26 @@ public:
 
 		probing_scheme_type insert_probing_scheme(seed);
 
-		uint64_t start_slot = insert_probing_scheme.begin(key);
+		int i = 0;
 
-		bool looped = false;
+		for (uint64_t insert_slot = insert_probing_scheme.begin(key); insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
 
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
+       			
+       		insert_slot = insert_slot % num_buckets;       		
 
-
-       		insert_slot = insert_slot % num_buckets;
-
-       		if (insert_slot == start_slot && looped) return false;    		
-
-			if (remove_from_bucket(insert_tile, key, insert_slot)){
+			if (remove_from_bucket(insert_tile, get_parity_key(key, i), insert_slot)){
 
 				//if (insert_tile.thread_rank() == 0) printf("Found in %llu!\n", insert_slot);
 				return true;
 			}
 
-			looped = true;
+			Val fake_val = 0;
 
-			//Val fake_val = 0;
+			if (check_empty_bucket(insert_tile, get_parity_key(key, i), fake_val, insert_slot) != Bucket_Size){
+				return false;
+			}
 
-			// if (check_empty_bucket(insert_tile, key, fake_val, insert_slot) != Bucket_Size){
-			// 	return false;
-			// }
+			i+=1;
      	
 
 		}
@@ -579,44 +414,37 @@ public:
 
 		//if (insert_tile.thread_rank() == 0) printf("Starting outer query!\n");
 
-		//dummy test
 
 		probing_scheme_type insert_probing_scheme(seed);
 
+		int i = 0;
 
-		uint64_t start_slot = insert_probing_scheme.begin(key);
+		for (uint64_t insert_slot = insert_probing_scheme.begin(key); insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
 
-		bool looped = false;
-
-		for (uint64_t insert_slot = start_slot; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(rep_type::tag(key))){
-
-
+       			
        		insert_slot = insert_slot % num_buckets;
 
-       		if (insert_slot == start_slot && looped) return false;
+
        		
 
-			if (query_into_bucket(insert_tile, key, ext_val, insert_slot)){
+			if (query_into_bucket(insert_tile, get_parity_key(key,i), ext_val, insert_slot)){
 
 				//if (insert_tile.thread_rank() == 0) printf("Found in %llu!\n", insert_slot);
 				return true;
 			}
 
-			int fill = check_empty_bucket(insert_tile, key, ext_val, insert_slot);
 
-			if (fill != Bucket_Size){
+			i+=1;
 
-				//printf("Early Execution failure: %d for key %llu\n", fill, key);
-				return false;
-			}
-
-			looped = true;
+			// if (check_empty_bucket(insert_tile, key, ext_val, insert_slot) != Bucket_Size){
+			// 	return false;
+			// }
      	
      	
 
 		}
 
-		//if (insert_tile.thread_rank() == 0) printf("Could not find %d after %llu probes\n", key, Max_Probes);
+		//if (insert_tile.thread_rank() == 0) printf("Could not find %d\n", key);
 
 		return false;
 

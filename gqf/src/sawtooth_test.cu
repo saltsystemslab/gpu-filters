@@ -481,7 +481,7 @@ __host__ void bulk_sawtooth_test(int num_bits, int num_partitions, int num_round
    
       cudaDeviceSynchronize();
 
-      printf("Done with delete round %d\n", i);
+      //printf("Done with delete round %d\n", i);
 
       //false negative query
       for (int j = i+1; j < num_partitions; j++){
@@ -519,7 +519,7 @@ __host__ void bulk_sawtooth_test(int num_bits, int num_partitions, int num_round
 
       }
 
-      printf("Done with queries round %d\n", i);
+      //printf("Done with queries round %d\n", i);
 
       //and finally re-add
 
@@ -537,7 +537,7 @@ __host__ void bulk_sawtooth_test(int num_bits, int num_partitions, int num_round
       cudaDeviceSynchronize();
 
 
-      printf("Done with re-insert round %d\n", i);
+      //printf("Done with re-insert round %d\n", i);
    
 
 

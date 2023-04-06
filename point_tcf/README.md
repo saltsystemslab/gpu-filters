@@ -85,6 +85,7 @@ Several tests exist to showcase the behavior/performance of the TCF
 * `test_cg_variations`: Iterate over all of the cooperative group options for the and record their throughput on insertions and queries.
 * `delete_tests`: Test the TCF on insertions, queries, and deleting 50% of inserted items.
 * `sawtooth_test`: Fill the TCF to 90% load factor, then delete items in batches.
+* `fused_sawtooth_test`: Sawtooth test but with all queries performed in one kernel for performance. Also displays the throughput of deletion in every batch.
 * `speed_tests`: Test speed of TCF on basic ops.
 
 * `test_mhm_tcf`: test the configuration of the TCF used in MetaHipMer.

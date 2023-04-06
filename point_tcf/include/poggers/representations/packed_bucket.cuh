@@ -61,6 +61,30 @@ struct  bucketed_internal_dynamic_container {
 
 		}
 
+		__device__ int get_empty(cg::thread_block_tile<Partition_Size> insert_tile){
+
+			int fill = 0;
+
+			for (int i = insert_tile.thread_rank(); i < Bucket_Size; i+= Partition_Size){
+
+				// //Storage_type * key_ptr = &keys[0];
+				// if (threadIdx.x+blockIdx.x*blockDim.x == 2){
+
+
+				// printf("%d: is_empty: %d, is full: %d tombstone %x contained: %x\n", i, storage[i].is_empty(), storage[i].contains(storage[i].get_tombstone()), storage[i].get_tombstone(), storage[i]);
+				// }
+
+				bool filled = !(storage[i].is_empty());
+
+				fill += __popc(insert_tile.ballot(filled));
+
+			}
+
+			return fill;
+
+
+		}
+
 		__device__ inline bool insert(cg::thread_block_tile<Partition_Size> insert_tile, Key key, Val val){
 
 		for (int i = insert_tile.thread_rank(); i < Bucket_Size; i+= Partition_Size){
@@ -257,7 +281,14 @@ struct  bucketed_internal_dynamic_container {
 						//ballot = typed_atomic_write(&keys[i], ext_key, get_tombstone());
 					}
 
-					if (insert_tile.ballot(ballot)) return true;
+					if (insert_tile.ballot(ballot)){
+
+
+						if (leader == insert_tile.thread_rank() && !storage[i].contains_tombstone()){
+							printf("Bug in setting tombstone? %d is now %llu\n", i, storage[i].get_key());
+						}
+						return true;
+					} 
 
 					ballot_result ^= 1UL << leader;
 

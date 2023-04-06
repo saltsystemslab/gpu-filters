@@ -630,11 +630,6 @@ public:
 
 		uint64_t remainder = full_hash >> (rep_type::tag_bits());
 
-		if (( (remainder << (rep_type::tag_bits) ) | key) != full_hash){
-			printf("Bug in getting remainder\n");
-		}
-
-
 		for (uint64_t insert_slot = remainder; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(key)){
 
 			if (insert_slot != remainder){
@@ -776,11 +771,6 @@ public:
 		key = rep_type::tag(full_hash);
 
 		uint64_t remainder = full_hash >> (rep_type::tag_bits());
-
-		if (( (remainder << (rep_type::tag_bits) ) | key) != full_hash){
-			printf("Bug in getting remainder\n");
-		}
-
 
 		for (uint64_t insert_slot = remainder; insert_slot != insert_probing_scheme.end(); insert_slot = insert_probing_scheme.next(key)){
 

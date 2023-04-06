@@ -708,7 +708,8 @@ __host__ void test_speed_batched(const std::string& filename, Sizing_Type * Init
 
    //inserts
 
-   printf("Writing results to file: %s\n",  insert_file);
+   std::cout << "Writing results to file " << insert_file << std::endl;
+   //printf("Writing results to file: %s\n",  insert_file);
 
    fprintf(fp_insert, "x_0 y_0\n");
    for (int i = 0; i < num_batches; i++){
@@ -719,7 +720,8 @@ __host__ void test_speed_batched(const std::string& filename, Sizing_Type * Init
 
 
    //queries
-   printf("Writing results to file: %s\n",  query_file);
+   //printf("Writing results to file: %s\n",  query_file);
+   std::cout << "Writing results to file " << query_file << std::endl;
 
    fprintf(fp_lookup, "x_0 y_0\n");
    for (int i = 0; i < num_batches; i++){
@@ -729,7 +731,8 @@ __host__ void test_speed_batched(const std::string& filename, Sizing_Type * Init
    }
 
 
-   printf("Writing results to file: %s\n",  fp_file);
+   //printf("Writing results to file: %s\n",  fp_file);
+   std::cout << "Writing results to file " << fp_file << std::endl;
 
    fprintf(fp_false_lookup, "x_0 y_0\n");
    for (int i = 0; i < num_batches; i++){
