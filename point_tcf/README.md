@@ -74,7 +74,7 @@ Building
 --------
 The TCF components are header only, so linking the underlying library is sufficient to include the TCF.
 
-Building CMake inside of the directory will add the tests.
+Building CMake with the flag `-DPOINT_TCF_BUILD_TESTS=ON` inside of the directory will add the tests.
 
 
 Running Tests
