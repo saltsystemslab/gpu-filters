@@ -76,6 +76,9 @@ The argument to -d is the filter being tested. The currently supported filter ty
  - bloom (Bloom Filter)
 
 
+To set the number of bits stored per (key,value) pair in the GQF, change the `QF_BITS_PER_SLOT` definition on line 30 of `gqf_int.cuh`.
+
+
 Testing
 -------
 test.cu contains the tests used to compare the various filters
