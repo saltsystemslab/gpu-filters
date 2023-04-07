@@ -106,7 +106,7 @@ This will test the gqf filter with a dataset of 2^28 items split into 20 batches
 ```bash
  $ ./gqf_verify 26 1 4
 ```
-This will test the gqf on a dataset of 2^26 bits, where the data is generated as a zipfian distribution and the items are inserted using a reduction scheme.
+This will test the gqf on a dataset of 2^26 bits, where the data is generated as a zipfian distribution and the items are inserted using a reduction scheme. If running the reduction test, you must set the CudaToolKit version to `<= 10.6`: A change in more recent versions of Thrust causes a warp misaligned issue.
 
 Artifact Descriptions
 ----------------------

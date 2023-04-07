@@ -3883,7 +3883,7 @@ __global__ void insert_from_buffers_thrust(QF* qf, uint64_t evenness, uint64_t *
 
 	if (absolute_offset >= num_keys){
 
-		printf("Offset is %llu, num_keys %llu\n", absolute_offset, num_keys);
+		//printf("Offset is %llu, num_keys %llu\n", absolute_offset, num_keys);
 
 		return;
 
@@ -4839,9 +4839,9 @@ __host__ void bulk_insert_reduce(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t
 
 
 
-	printf("New nvals %llu\n", new_nvals);
+	//printf("New nvals %llu\n", new_nvals);
 
-	printf("Error after this is pointer cast?\n");
+	//printf("Error after this is pointer cast?\n");
 
 	uint64_t * new_keys = thrust::raw_pointer_cast(thrust_keys);
 	uint64_t * new_key_counts = thrust::raw_pointer_cast(thrust_vals);
@@ -4850,7 +4850,7 @@ __host__ void bulk_insert_reduce(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t
 	cudaDeviceSynchronize();
 
 
-	printf("Error after this in binary?\n");
+	//printf("Error after this in binary?\n");
 
 	//set_buffers_binary<<<(num_locks-1)/key_block_size+1, key_block_size>>>(qf, new_nvals, slots_per_lock, new_keys, num_locks, buffers, flags);
 
@@ -4866,7 +4866,7 @@ __host__ void bulk_insert_reduce(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t
 
 	cudaDeviceSynchronize();
 
-	printf("Thrust buffers attached\n");
+	//printf("Thrust buffers attached\n");
 
 	uint64_t evenness = 0;
 
@@ -4879,7 +4879,7 @@ __host__ void bulk_insert_reduce(QF* qf, uint64_t nvals, uint64_t* keys, uint8_t
 
 	cudaDeviceSynchronize();
 
-	printf("Insertion done.\n");
+	//printf("Insertion done.\n");
 
 	//free resources
 	thrust::device_free(thrust_keys);
