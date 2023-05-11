@@ -2,13 +2,13 @@
 #define BASE_TABLE
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdexcept>
 
-#include <cooperative_groups.h>
+#include <hip/hip_cooperative_groups.h>
 
 #include <poggers/tables/recursive_end_table.cuh>
 
@@ -132,11 +132,11 @@ public:
 
 		my_type * dev_version;
 
-		cudaMalloc((void **)&dev_version, sizeof(my_type));
+		hipMalloc((void **)&dev_version, sizeof(my_type));
 
-		cudaMemcpy(dev_version, host_table, sizeof(my_type), cudaMemcpyHostToDevice);
+		hipMemcpy(dev_version, host_table, sizeof(my_type), hipMemcpyHostToDevice);
 
-		cudaDeviceSynchronize();
+		hipDeviceSynchronize();
 		free(host_table);
 
 		return dev_version;
@@ -149,7 +149,7 @@ public:
 
 		my_type host_version;
 
-		cudaMemcpy(&host_version, dev_version, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(&host_version, dev_version, sizeof(my_type), hipMemcpyDeviceToHost);
 
 		insert_scheme_type::free_on_device(host_version.my_insert_scheme);
 
@@ -157,7 +157,7 @@ public:
 			Recursive_Type::free_on_device(host_version.secondary_table);
 		}
 
-		cudaFree(dev_version);
+		hipFree(dev_version);
 
 		return;
 
@@ -333,9 +333,9 @@ public:
 
 		my_type * host_version;
 
-		cudaMallocHost((void **)&host_version, sizeof(my_type));
+		hipHostMalloc((void **)&host_version, sizeof(my_type));
 
-		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(host_version, this, sizeof(my_type), hipMemcpyDeviceToHost);
 
 		uint64_t total_bytes = host_version->my_insert_scheme->host_bytes_in_use();
 
@@ -343,7 +343,7 @@ public:
 			total_bytes += host_version->secondary_table->host_bytes_in_use();
 		}
 
-		cudaFreeHost(host_version);
+		hipHostFree(host_version);
 
 		return total_bytes;
 

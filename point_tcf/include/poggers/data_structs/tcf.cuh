@@ -17,8 +17,6 @@
 
 #include <poggers/sizing/default_sizing.cuh>
 
-#include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
-
 #include <poggers/representations/packed_bucket.cuh>
 
 #include <poggers/insert_schemes/linear_insert_buckets.cuh>
@@ -30,8 +28,6 @@
 #include <poggers/representations/grouped_storage_sub_bits.cuh>
 
 #include <poggers/probing_schemes/xor_power_of_two.cuh>
-
-#include <poggers/insert_schemes/linear_insert_buckets_parity.cuh>
 
 #include <poggers/probing_schemes/double_hashing.cuh>
 

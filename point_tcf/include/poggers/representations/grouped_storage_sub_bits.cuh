@@ -2,8 +2,8 @@
 #define GROUPED_STORAGE_BITS_H
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <variant>
 
 #include <poggers/representations/representation_helpers.cuh>

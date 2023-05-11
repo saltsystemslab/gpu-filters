@@ -2,13 +2,13 @@
 #define SIZE_IN_NUM_SLOTS
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <stdio.h>
 #include <assert.h>
 #include <cstdarg>
 
-#include <cooperative_groups.h>
+#include <hip/hip_cooperative_groups.h>
 
 //#include <poggers/hash_schemes/murmurhash.cuh>
 

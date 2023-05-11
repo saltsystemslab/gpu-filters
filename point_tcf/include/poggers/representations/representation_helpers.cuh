@@ -2,12 +2,12 @@
 #define REP_HELPERS
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <stdio.h>
 #include <assert.h>
 
-#include <cooperative_groups.h>
+#include <hip/hip_cooperative_groups.h>
 
 //#include <poggers/hash_schemes/murmurhash.cuh>
 
@@ -82,13 +82,6 @@ __device__ __inline__ bool typed_atomic_write(T * backing, T item, T replace){
 }
 
 
-template<>
-__device__ __inline__ bool typed_atomic_write<uint16_t>(uint16_t * backing, uint16_t item, uint16_t replace){
-
-
-	return (atomicCAS((unsigned short int *) backing, (unsigned short int) item, (unsigned short int) replace) == item);
-
-}
 
 // __device__ __inline__ bool typed_atomic_write<unsigned short>(unsigned short * backing, unsigned short item, unsigned short replace){
 
@@ -132,7 +125,9 @@ __device__ __inline__ T typed_atomic_CAS(T * backing, T item, T replace){
 
 	abort();
 
-	static_assert(sizeof(T) > 8);
+	//static_assert(sizeof(T) > 8);
+
+	printf("This should not be called\n");
 
 	uint64_t uint_item = ((uint64_t *) &item)[0];
 
@@ -151,15 +146,6 @@ __device__ __inline__ T typed_atomic_CAS(T * backing, T item, T replace){
 	return first_write;
 }
 
-
-template<>
-__device__ __inline__ uint16_t typed_atomic_CAS<uint16_t>(uint16_t * backing, uint16_t item, uint16_t replace){
-
-	uint16_t result = atomicCAS((unsigned short int *) backing, (unsigned short int) item, (unsigned short int) replace);
-
-	return result;
-
-}
 
 
 template<>

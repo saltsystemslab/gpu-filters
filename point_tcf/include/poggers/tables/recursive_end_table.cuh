@@ -2,13 +2,13 @@
 #define END_TABLE
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdexcept>
 
-#include <cooperative_groups.h>
+#include <hip/hip_cooperative_groups.h>
 
 //#include <poggers/hash_schemes/murmurhash.cuh>
 
@@ -99,9 +99,9 @@ public:
 		//obviously never call this
 		my_type * dev_version = NULL;
 
-		// cudaMalloc((void **)&dev_version, sizeof(my_type));
+		// hipMalloc((void **)&dev_version, sizeof(my_type));
 
-		// cudaMemcpy(dev_version, &host_table, sizeof(my_type), cudaMemcpyHostToDevice);
+		// hipMemcpy(dev_version, &host_table, sizeof(my_type), hipMemcpyHostToDevice);
 
 		return dev_version;
 

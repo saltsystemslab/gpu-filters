@@ -1,14 +1,15 @@
+#include "hip/hip_runtime.h"
 #ifndef BUCKETED_TABLE 
 #define BUCKETED_TABLE
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdexcept>
 
-#include <cooperative_groups.h>
+#include <hip/hip_cooperative_groups.h>
 
 #include <poggers/tables/recursive_end_table.cuh>
 
@@ -160,7 +161,7 @@ public:
 			//printf("If you see this and didn't expect to re-pull POGGERS - should only be enabled on 1/23/23\n");
 			uint64_t * host_debug_counters;
 
-			cudaMallocManaged((void **)&host_debug_counters, sizeof(uint64_t)*2);
+			hipMallocManaged((void **)&host_debug_counters, sizeof(uint64_t)*2);
 
 			host_debug_counters[0] = 0;
 			host_debug_counters[1] = 0;
@@ -196,11 +197,11 @@ public:
 
 		my_type * dev_version;
 
-		cudaMalloc((void **)&dev_version, sizeof(my_type));
+		hipMalloc((void **)&dev_version, sizeof(my_type));
 
-		cudaMemcpy(dev_version, host_table, sizeof(my_type), cudaMemcpyHostToDevice);
+		hipMemcpy(dev_version, host_table, sizeof(my_type), hipMemcpyHostToDevice);
 
-		cudaDeviceSynchronize();
+		hipDeviceSynchronize();
 		free(host_table);
 
 		return dev_version;
@@ -223,7 +224,7 @@ public:
 
 		my_type host_version;
 
-		cudaMemcpy(&host_version, dev_version, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(&host_version, dev_version, sizeof(my_type), hipMemcpyDeviceToHost);
 
 		insert_scheme_type::free_on_device(host_version.my_insert_scheme);
 
@@ -232,10 +233,10 @@ public:
 		}
 
 		#if POGGERS_REMOVE_DEBUG
-		cudaFree(host_version.debug_counters);
+		hipFree(host_version.debug_counters);
 		#endif
 
-		cudaFree(dev_version);
+		hipFree(dev_version);
 
 		return;
 
@@ -496,9 +497,9 @@ public:
 
 		my_type * host_version;
 
-		cudaMallocHost((void **)&host_version, sizeof(my_type));
+		hipHostMalloc((void **)&host_version, sizeof(my_type));
 
-		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(host_version, this, sizeof(my_type), hipMemcpyDeviceToHost);
 
 		uint64_t total_bytes = host_version->my_insert_scheme->host_bytes_in_use();
 
@@ -506,7 +507,7 @@ public:
 			total_bytes += host_version->secondary_table->host_bytes_in_use();
 		}
 
-		cudaFreeHost(host_version);
+		hipHostFree(host_version);
 
 		return total_bytes;
 
@@ -518,13 +519,13 @@ public:
 
 		my_type * host_version;
 
-		cudaMallocHost((void **)&host_version, sizeof(my_type));
+		hipHostMalloc((void **)&host_version, sizeof(my_type));
 
-		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(host_version, this, sizeof(my_type), hipMemcpyDeviceToHost);
 
 		uint64_t total_bytes = host_version->my_insert_scheme->host_bytes_in_use();
 
-		cudaFreeHost(host_version);
+		hipHostFree(host_version);
 
 		return total_bytes;
 
@@ -535,13 +536,13 @@ public:
 
 		my_type * host_version;
 
-		cudaMallocHost((void **)&host_version, sizeof(my_type));
+		hipHostMalloc((void **)&host_version, sizeof(my_type));
 
-		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(host_version, this, sizeof(my_type), hipMemcpyDeviceToHost);
 
 		uint64_t num_buckets = host_version->my_insert_scheme->host_get_num_buckets();
 
-		cudaFreeHost(host_version);
+		hipHostFree(host_version);
 
 		return num_buckets;
 
@@ -554,9 +555,9 @@ public:
 
 		my_type * host_version;
 
-		cudaMallocHost((void **)&host_version, sizeof(my_type));
+		hipHostMalloc((void **)&host_version, sizeof(my_type));
 
-		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(host_version, this, sizeof(my_type), hipMemcpyDeviceToHost);
 
 		if (Is_Recursive){
 
@@ -564,7 +565,7 @@ public:
 
 		}
 
-		cudaFreeHost(host_version);
+		hipHostFree(host_version);
 
 		return prev + get_local_num_slots();
 
@@ -598,9 +599,9 @@ public:
 
 		my_type * host_version;
 
-		cudaMallocHost((void **)&host_version, sizeof(my_type));
+		hipHostMalloc((void **)&host_version, sizeof(my_type));
 
-		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(host_version, this, sizeof(my_type), hipMemcpyDeviceToHost);
 
 
 		#if POGGERS_REMOVE_DEBUG
@@ -619,24 +620,27 @@ public:
 
 		
 
-		cudaFreeHost(host_version);
+		hipHostFree(host_version);
 
 		uint64_t * counter;
 
 		//with num buckets, launch kernel
-		cudaMallocManaged((void **) &counter, sizeof(uint64_t));
+		hipMallocManaged((void **) &counter, sizeof(uint64_t));
 
-		cudaDeviceSynchronize();
+		hipDeviceSynchronize();
 
 		counter[0] = 0;
 
-		count_fill_kernel<my_type><<<this->get_num_blocks(num_buckets), this->get_block_size(num_buckets)>>>(this, num_buckets, counter);
+		uint64_t num_blocks = this->get_num_blocks(num_buckets);
+		uint64_t block_size = this->get_block_size(num_buckets);
+
+		hipLaunchKernelGGL(HIP_KERNEL_NAME(count_fill_kernel<my_type>), num_blocks, block_size, 0, 0, this, num_buckets, counter);
 		
-		cudaDeviceSynchronize();
+		hipDeviceSynchronize();
 
 		uint64_t return_val = counter[0];
 
-		cudaFree(counter);
+		hipFree(counter);
 
 		return return_val + lower_val;
 
@@ -651,9 +655,9 @@ public:
 
 		my_type * host_version;
 
-		cudaMallocHost((void **)&host_version, sizeof(my_type));
+		hipHostMalloc((void **)&host_version, sizeof(my_type));
 
-		cudaMemcpy(host_version, this, sizeof(my_type), cudaMemcpyDeviceToHost);
+		hipMemcpy(host_version, this, sizeof(my_type), hipMemcpyDeviceToHost);
 
 
 		#if POGGERS_REMOVE_DEBUG
@@ -672,24 +676,27 @@ public:
 
 		
 
-		cudaFreeHost(host_version);
+		hipHostFree(host_version);
 
 		uint64_t * counter;
 
 		//with num buckets, launch kernel
-		cudaMallocManaged((void **) &counter, sizeof(uint64_t));
+		hipMallocManaged((void **) &counter, sizeof(uint64_t));
 
-		cudaDeviceSynchronize();
+		hipDeviceSynchronize();
 
 		counter[0] = 0;
 
-		count_empty_kernel<my_type><<<this->get_num_blocks(num_buckets), this->get_block_size(num_buckets)>>>(this, num_buckets, counter);
+		uint64_t num_blocks = this->get_num_blocks(num_buckets);
+		uint64_t block_size = this->get_block_size(num_buckets);
+
+		hipLaunchKernelGGL(HIP_KERNEL_NAME(count_empty_kernel<my_type>), num_blocks, block_size, 0, 0, this, num_buckets, counter);
 		
-		cudaDeviceSynchronize();
+		hipDeviceSynchronize();
 
 		uint64_t return_val = counter[0];
 
-		cudaFree(counter);
+		hipFree(counter);
 
 		return return_val + lower_val;
 

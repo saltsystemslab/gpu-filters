@@ -2,12 +2,12 @@
 #define MURMUR_HASHER
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <stdio.h>
 #include <assert.h>
 
-#include <cooperative_groups.h>
+#include <hip/hip_cooperative_groups.h>
 
 namespace cg = cooperative_groups;
 

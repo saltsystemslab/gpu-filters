@@ -1,6 +1,12 @@
 # GPU Filters
 High-Performance GPU Filters
 
+
+NOTICE
+--------
+This is the HIP branch and contains experimental code for running the TCF on AMD GPUs.
+
+
 FEATURES
 ---------
 

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * ============================================================================
  *
@@ -14,67 +15,6 @@
  */
 
 
-
-
-//#include "include/templated_quad_table.cuh"
-// #include <poggers/metadata.cuh>
-// #include <poggers/hash_schemes/murmurhash.cuh>
-// #include <poggers/probing_schemes/linear_probing.cuh>
-// #include <poggers/probing_schemes/double_hashing.cuh>
-// #include <poggers/probing_schemes/power_of_two.cuh>
-// #include <poggers/insert_schemes/single_slot_insert.cuh>
-// #include <poggers/insert_schemes/bucket_insert.cuh>
-// #include <poggers/insert_schemes/power_of_n.cuh>
-// #include <poggers/representations/key_val_pair.cuh>
-// #include <poggers/representations/shortened_key_val_pair.cuh>
-// #include <poggers/sizing/default_sizing.cuh>
-// #include <poggers/tables/base_table.cuh>
-// #include <poggers/insert_schemes/power_of_n_shortcut.cuh>
-
-// #include <poggers/sizing/variadic_sizing.cuh>
-
-// #include <poggers/representations/soa.cuh>
-// #include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
-
-// #include <poggers/tables/bucketed_table.cuh>
-
-
-// #include <poggers/representations/12_bit_bucket.cuh>
-// #include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
-// #include <poggers/representations/dynamic_container.cuh>
-// #include <poggers/representations/key_only.cuh>
-
-
-// #include <poggers/insert_schemes/grouped_power_buckets.cuh>
-
-
-// inclusions to build the TCF
-#include <poggers/metadata.cuh>
-#include <poggers/hash_schemes/murmurhash.cuh>
-#include <poggers/probing_schemes/double_hashing.cuh>
-#include <poggers/probing_schemes/power_of_two.cuh>
-
-// new container for 2-byte key val pairs
-#include <poggers/representations/grouped_key_val_pair.cuh>
-
-#include <poggers/representations/key_val_pair.cuh>
-#include <poggers/representations/dynamic_container.cuh>
-
-#include <poggers/sizing/default_sizing.cuh>
-
-#include <poggers/insert_schemes/power_of_n_shortcut.cuh>
-
-#include <poggers/insert_schemes/power_of_n_shortcut_buckets.cuh>
-
-#include <poggers/representations/packed_bucket.cuh>
-
-#include <poggers/insert_schemes/linear_insert_buckets.cuh>
-
-#include <poggers/tables/bucketed_table.cuh>
-
-#include <poggers/representations/grouped_storage_sub_bits.cuh>
-
-
 #include <poggers/data_structs/tcf.cuh>
 
 #include <stdio.h>
@@ -82,8 +22,8 @@
 #include <chrono>
 #include <openssl/rand.h>
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -123,11 +63,11 @@ using TCF = poggers::data_structs::tcf_wrapper<uint64_t, uint8_t, 26, 6, 1, 16>:
 
 
 #define gpuErrorCheck(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+inline void gpuAssert(hipError_t code, const char *file, int line, bool abort=true)
 {
-   if (code != cudaSuccess) 
+   if (code != hipSuccess) 
    {
-      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      fprintf(stderr,"GPUassert: %s %s %d\n", hipGetErrorString(code), file, line);
       if (abort) exit(code);
    }
 }
@@ -576,8 +516,8 @@ __host__ void test_tcf_speed(const std::string& filename, int num_bits, int num_
 
    uint64_t * misses;
 
-   cudaMallocManaged((void **)& misses, sizeof(uint64_t)*5);
-   cudaDeviceSynchronize();
+   hipMallocManaged((void **)& misses, sizeof(uint64_t)*5);
+   hipDeviceSynchronize();
 
    //printf("Data generated\n");
 
@@ -590,7 +530,7 @@ __host__ void test_tcf_speed(const std::string& filename, int num_bits, int num_
    //static seed for testing
    Filter * test_filter = Filter::generate_on_device(Initializer, 42);
 
-   cudaDeviceSynchronize();
+   hipDeviceSynchronize();
 
    //init timing materials
    std::chrono::duration<double>  * insert_diff = (std::chrono::duration<double>  *) malloc(num_batches*sizeof(std::chrono::duration<double>));
@@ -619,73 +559,77 @@ __host__ void test_tcf_speed(const std::string& filename, int num_bits, int num_
       batch_amount[i] = items_in_this_batch;
 
 
-      cudaMalloc((void **)& dev_keys, items_in_this_batch*sizeof(Key));
-      cudaMalloc((void **)& dev_vals, items_in_this_batch*sizeof(Val));
+      hipMalloc((void **)& dev_keys, items_in_this_batch*sizeof(Key));
+      hipMalloc((void **)& dev_vals, items_in_this_batch*sizeof(Val));
 
 
-      cudaMemcpy(dev_keys, host_keys+start_of_batch, items_in_this_batch*sizeof(Key), cudaMemcpyHostToDevice);
-      cudaMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), cudaMemcpyHostToDevice);
+      hipMemcpy(dev_keys, host_keys+start_of_batch, items_in_this_batch*sizeof(Key), hipMemcpyHostToDevice);
+      hipMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), hipMemcpyHostToDevice);
 
 
       bool * missed;
 
-      cudaMalloc((void **)&missed, items_in_this_batch*sizeof(bool));
+      hipMalloc((void **)&missed, items_in_this_batch*sizeof(bool));
+
+
+      uint64_t num_blocks = test_filter->get_num_blocks(items_in_this_batch);
+      uint64_t block_size = test_filter->get_block_size(items_in_this_batch);
 
 
 
       //ensure GPU is caught up for next task
-      cudaDeviceSynchronize();
+      hipDeviceSynchronize();
 
       auto insert_start = std::chrono::high_resolution_clock::now();
 
       //add function for configure parameters - should be called by ht and return dim3
-      speed_insert_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_in_this_batch),test_filter->get_block_size(items_in_this_batch)>>>(test_filter, dev_keys, dev_vals, items_in_this_batch, misses);
-      //debug_insert_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_in_this_batch),test_filter->get_block_size(items_in_this_batch)>>>(test_filter, dev_keys, dev_vals, items_in_this_batch, misses, missed);
-      
-      cudaDeviceSynchronize();
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(speed_insert_kernel<Filter, Key, Val>), num_blocks, block_size, 0, 0, test_filter, dev_keys, dev_vals, items_in_this_batch, misses);
+   
+
+      hipDeviceSynchronize();
       auto insert_end = std::chrono::high_resolution_clock::now();
 
       insert_diff[i] = insert_end-insert_start;
 
-      cudaMemcpy(dev_keys, host_keys+start_of_batch, items_in_this_batch*sizeof(Key), cudaMemcpyHostToDevice);
-      cudaMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), cudaMemcpyHostToDevice);
+      hipMemcpy(dev_keys, host_keys+start_of_batch, items_in_this_batch*sizeof(Key), hipMemcpyHostToDevice);
+      hipMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), hipMemcpyHostToDevice);
 
 
-      cudaDeviceSynchronize();
+      hipDeviceSynchronize();
 
       auto query_start = std::chrono::high_resolution_clock::now();
 
-      speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_in_this_batch),test_filter->get_block_size(items_in_this_batch)>>>(test_filter, dev_keys, dev_vals, items_in_this_batch, &misses[1], &misses[2]);
-      //debug_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_in_this_batch),test_filter->get_block_size(items_in_this_batch)>>>(test_filter, dev_keys, dev_vals, items_in_this_batch, &misses[1], &misses[2], missed);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(speed_query_kernel<Filter, Key, Val>), num_blocks, block_size, 0, 0, test_filter, dev_keys, dev_vals, items_in_this_batch, &misses[1], &misses[2]);
       
-      cudaDeviceSynchronize();
+      
+      hipDeviceSynchronize();
       auto query_end = std::chrono::high_resolution_clock::now();
 
 
      
       query_diff[i] = query_end - query_start;
 
-      cudaMemcpy(dev_keys, fp_keys+start_of_batch, items_in_this_batch*sizeof(Key), cudaMemcpyHostToDevice);
-      cudaMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), cudaMemcpyHostToDevice);
+      hipMemcpy(dev_keys, fp_keys+start_of_batch, items_in_this_batch*sizeof(Key), hipMemcpyHostToDevice);
+      hipMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), hipMemcpyHostToDevice);
 
 
-      cudaDeviceSynchronize();
+      hipDeviceSynchronize();
 
       auto fp_start = std::chrono::high_resolution_clock::now();
 
-      speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_in_this_batch),test_filter->get_block_size(items_in_this_batch)>>>(test_filter, dev_keys, dev_vals, items_in_this_batch, &misses[3], &misses[4]);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(speed_query_kernel<Filter, Key, Val>), num_blocks, block_size, 0, 0, test_filter, dev_keys, dev_vals, items_in_this_batch, &misses[3], &misses[4]);
 
 
-      cudaDeviceSynchronize();
+      hipDeviceSynchronize();
       auto fp_end = std::chrono::high_resolution_clock::now();
 
       fp_diff[i] = fp_end-fp_start;
 
 
-      cudaFree(dev_keys);
-      cudaFree(dev_vals);
+      hipFree(dev_keys);
+      hipFree(dev_vals);
 
-      cudaFree(missed);
+      hipFree(missed);
 
 
    }
@@ -704,19 +648,19 @@ __host__ void test_tcf_speed(const std::string& filename, int num_bits, int num_
    //   // batch_amount[i] = items_in_this_batch;
 
 
-   //    cudaMalloc((void **)& dev_keys, items_in_this_batch*sizeof(Key));
-   //    //cudaMalloc((void **)& dev_vals, items_in_this_batch*sizeof(Val));
+   //    hipMalloc((void **)& dev_keys, items_in_this_batch*sizeof(Key));
+   //    //hipMalloc((void **)& dev_vals, items_in_this_batch*sizeof(Val));
 
 
-   //    cudaMemcpy(dev_keys, host_keys+start_of_batch, items_in_this_batch*sizeof(Key), cudaMemcpyHostToDevice);
-   //    //cudaMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), cudaMemcpyHostToDevice);
+   //    hipMemcpy(dev_keys, host_keys+start_of_batch, items_in_this_batch*sizeof(Key), hipMemcpyHostToDevice);
+   //    //hipMemcpy(dev_vals, host_vals+start_of_batch, items_in_this_batch*sizeof(Val), hipMemcpyHostToDevice);
 
-   //    cudaDeviceSynchronize();
+   //    hipDeviceSynchronize();
 
    //    auto delete_start = std::chrono::high_resolution_clock::now();
 
-   //    speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(items_in_this_batch),test_filter->get_block_size(items_in_this_batch)>>>(test_filter, dev_keys, dev_vals, items_in_this_batch, &misses[1], &misses[2]);
-   //    cudaDeviceSynchronize();
+   //    hipLaunchKernelGGL(HIP_KERNEL_NAME(speed_query_kernel<Filter, Key, Val>), num_blocks, block_size, 0, 0, test_filter, dev_keys, dev_vals, items_in_this_batch, &misses[1], &misses[2]);
+   //    hipDeviceSynchronize();
    //    auto delete_end = std::chrono::high_resolution_clock::now();
 
 
@@ -725,7 +669,7 @@ __host__ void test_tcf_speed(const std::string& filename, int num_bits, int num_
 
    // }
 
-   cudaDeviceSynchronize();
+   hipDeviceSynchronize();
 
 
    Filter::free_on_device(test_filter);
@@ -790,101 +734,6 @@ __host__ void test_tcf_speed(const std::string& filename, int num_bits, int num_
 }
 
 
-template <typename Filter, typename Key, typename Val>
-__host__ void tcf_find_first_fill(uint64_t num_bits){
-
-
-   //std::cout << "Starting " << filename << " " << num_bits << std::endl;
-
-   poggers::sizing::size_in_num_slots<1> pre_init ((1ULL << num_bits));
-
-   poggers::sizing::size_in_num_slots<1> * Initializer = &pre_init;
-
-
-   // poggers::sizing::size_in_num_slots<2> pre_init ((1ULL << num_bits), (1ULL << num_bits)/100);
-
-
-   //  poggers::sizing::size_in_num_slots<2> * Initializer = &pre_init;
-
-   // poggers::sizing::size_in_num_slots<1> pre_init ((1ULL << num_bits));
-
-   // poggers::sizing::size_in_num_slots<1> * Initializer = &pre_init;
-
-
-
-   uint64_t nitems = Initializer->total();
-
-   Key * host_keys = generate_data<Key>(nitems);
-   Val * host_vals = generate_data<Val>(nitems);
-
-
-   Key * dev_keys;
-   Val * dev_vals;
-
-
-   // printf("Host keys\n");
-   // for (int i = 0; i < 10; i++){
-   //       printf("%d: %llu, %llu\n", i, host_keys[i], host_vals[i]);
-   //    }
-
-   uint64_t * misses;
-
-   cudaMallocManaged((void ** )&misses, sizeof(uint64_t)*2);
-
-   misses[0] = 0;
-   misses[1] = 0;
-
-   uint64_t * returned_nitems;
-   cudaMallocManaged((void **)&returned_nitems, sizeof(uint64_t));  
-
-   returned_nitems[0] = 0;
-
-   cudaMalloc((void **)&dev_keys, sizeof(Key)*nitems);
-   cudaMalloc((void **)&dev_vals, sizeof(Val)*nitems);
-
-   cudaMemcpy(dev_keys, host_keys, sizeof(Key)*nitems, cudaMemcpyHostToDevice);
-   cudaMemcpy(dev_vals, host_vals, sizeof(Val)*nitems, cudaMemcpyHostToDevice);
-
-   Filter * test_filter = Filter::generate_on_device(Initializer, 42);
-
-   printf("Test size: %llu\n", num_bits);
-
-   cudaDeviceSynchronize();
-
-   find_first_fill<Filter, Key, Val><<<1, 32>>>(test_filter, dev_keys, dev_vals, nitems, returned_nitems);
-
-   cudaDeviceSynchronize();
-
-   printf("Returned %llu\n", returned_nitems[0]);
-
-   cudaMemcpy(dev_keys, host_keys, sizeof(Key)*nitems, cudaMemcpyHostToDevice);
-   cudaMemcpy(dev_vals, host_vals, sizeof(Val)*nitems, cudaMemcpyHostToDevice);
-
-   cudaDeviceSynchronize();
-
-   uint64_t new_nitems = returned_nitems[0];
-
-   speed_query_kernel<Filter, Key, Val><<<test_filter->get_num_blocks(new_nitems), test_filter->get_block_size(new_nitems)>>>(test_filter, dev_keys, dev_vals, new_nitems, &misses[0], &misses[1]);
-
-   cudaDeviceSynchronize();
-
-   printf("Final misses: initial misses %llu %f wrong values %llu %f\n", misses[0], 1.0*misses[0]/new_nitems, misses[1], 1.0*misses[1]/new_nitems);
-
-   cudaDeviceSynchronize();
-
-   cudaFree(misses);
-
-   cudaFree(returned_nitems);
-
-   Filter::free_on_device(test_filter);
-
-   cudaFree(dev_keys);
-   cudaFree(dev_vals);
-
-}
-
-
-
 
 int main(int argc, char** argv) {
 
@@ -899,24 +748,9 @@ int main(int argc, char** argv) {
    test_tcf_speed<TCF, uint8_t>("tcf_mhm_26", 26, 20);
 
    test_tcf_speed<TCF, uint8_t>("tcf_mhm_28", 28, 20);
-
-   // test_eight_8();
-
-   // test_twelve_8();
-
-   // test_twelve_12();
-
-   // test_twelve_16();
-
-   // test_twelve_32();
-
-   // test_sixteen_16();
-
-   // test_sixteen_32();
-
    
 
-   cudaDeviceSynchronize();
+   hipDeviceSynchronize();
 
    printf("Tests over\n");
 
