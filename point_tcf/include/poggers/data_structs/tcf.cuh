@@ -1,7 +1,7 @@
 #ifndef POGGERS_TCF
 #define POGGERS_TCF
 
-
+#include <hipex/hipex.hpp>
 
 #include <poggers/metadata.cuh>
 #include <poggers/hash_schemes/murmurhash.cuh>

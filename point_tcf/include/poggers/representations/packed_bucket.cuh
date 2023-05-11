@@ -2,12 +2,15 @@
 #define PACKED_BUCKET_H
 
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 #include <variant>
 
 #include <poggers/representations/representation_helpers.cuh>
 
+#include <hip/hip_cooperative_groups.h>
+
+namespace cg = cooperative_groups;
 
 // struct __attribute__ ((__packed__)) val_storage {
 	
@@ -52,7 +55,8 @@ struct  bucketed_internal_dynamic_container {
 
 				bool filled = !(storage[i].is_empty() || storage[i].contains_tombstone());
 
-				fill += __popc(insert_tile.ballot(filled));
+				//fill += __popc(insert_tile.ballot(filled));
+				fill += __popc(hipex::ballot(insert_tile, filled));
 
 			}
 
@@ -76,7 +80,8 @@ struct  bucketed_internal_dynamic_container {
 
 				bool filled = !(storage[i].is_empty());
 
-				fill += __popc(insert_tile.ballot(filled));
+				//fill += __popc(insert_tile.ballot(filled));
+				fill += __popc(hipex::ballot(insert_tile, filled));
 
 			}
 
@@ -98,7 +103,8 @@ struct  bucketed_internal_dynamic_container {
 					ballot = true;
 				}
 
-				auto ballot_result = insert_tile.ballot(ballot);
+				//auto ballot_result = insert_tile.ballot(ballot);
+				auto ballot_result = hipex::ballot(insert_tile, ballot);
 
 				while (ballot_result){
 
@@ -108,22 +114,12 @@ struct  bucketed_internal_dynamic_container {
 
 					if (leader == insert_tile.thread_rank()){
 
-						//printf("Inserting\n");
-
-						//poggers::helpers::sub_byte_contains<Storage_type, Key, 12, Bucket_Size>(&keys, i)
-						//Storage_type * key_ptr = &keys[0];
-
 						ballot = storage[i].atomic_swap(key, val);
-
-						//ballot = poggers::helpers::sub_byte_replace<Key>(key_ptr, get_empty(), key, i);
-						//ballot = poggers::helpers::typed_atomic_write(&keys[i], get_empty(), key);
-
-						// if (ballot){
-						// 	vals[i] = val;
-						// }
+	
 					}
 
-					if (insert_tile.ballot(ballot)) return true;
+					//if (insert_tile.ballot(ballot)) return true;
+					if (hipex::ballot(insert_tile,ballot)) return true;
 
 					ballot_result ^= 1UL << leader;
 
@@ -150,7 +146,8 @@ struct  bucketed_internal_dynamic_container {
 					ballot = true;
 				}
 
-				auto ballot_result = insert_tile.ballot(ballot);
+				//auto ballot_result = insert_tile.ballot(ballot);
+				auto ballot_result = hipex::ballot(insert_tile, ballot);
 
 				while (ballot_result){
 
@@ -189,7 +186,8 @@ struct  bucketed_internal_dynamic_container {
 						// }
 					}
 
-					if (insert_tile.ballot(ballot)) return true;
+					//if (insert_tile.ballot(ballot)) return true;
+					if (hipex::ballot(insert_tile,ballot)) return true;
 
 					ballot_result ^= 1UL << leader;
 
@@ -223,7 +221,8 @@ struct  bucketed_internal_dynamic_container {
 					ext_val = storage[i].get_val(ext_key);
 				}
 
-				auto ballot_result = insert_tile.ballot(ballot);
+				//auto ballot_result = insert_tile.ballot(ballot);
+				auto ballot_result = hipex::ballot(insert_tile, ballot);
 
 				if (ballot_result){
 					ext_val = insert_tile.shfl(ext_val, __ffs(ballot_result)-1);
@@ -265,7 +264,8 @@ struct  bucketed_internal_dynamic_container {
 					//ext_val = vals[i];
 				}
 
-				auto ballot_result = insert_tile.ballot(ballot);
+				//auto ballot_result = insert_tile.ballot(ballot);
+				auto ballot_result = hipex::ballot(insert_tile, ballot);
 
 				while (ballot_result){
 
@@ -281,7 +281,8 @@ struct  bucketed_internal_dynamic_container {
 						//ballot = typed_atomic_write(&keys[i], ext_key, get_tombstone());
 					}
 
-					if (insert_tile.ballot(ballot)){
+					//if (insert_tile.ballot(ballot)){
+					if (hipex::ballot(insert_tile, ballot)){
 
 
 						if (leader == insert_tile.thread_rank() && !storage[i].contains_tombstone()){

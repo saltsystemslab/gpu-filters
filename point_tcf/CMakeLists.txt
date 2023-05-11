@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
-project(poggers VERSION 0.1.0 LANGUAGES CXX CUDA)
+project(poggers VERSION 0.1.0 LANGUAGES CXX)
 
 
 
@@ -18,13 +18,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 
-set(GPU_ARCHS "")
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/EvalGpuArchs.cmake)
-  evaluate_gpu_archs(GPU_ARCHS)
+
+find_package(hip REQUIRED)
 
 
-find_package(CUDAToolkit 11.0 REQUIRED)
-set(CMAKE_CUDA_RUNTIME_LIBRARY SHARED)
 
 #package manager
 include(cmake/CPM.cmake)
@@ -47,12 +44,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_COMPILER $ENV{CC})
 set(CMAKE_CXX_COMPILER $ENV{CXX})
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}") 
+//set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
+set_target_properties(poggers PROPERTIES LANGUAGE HIP LINKER_LANGUAGE HIP)
 
-set_target_properties(poggers PROPERTIES CMAKE_CUDA_RUNTIME_LIBRARY Static)
-set_target_properties(poggers PROPERTIES CUDA_SEPARABLE_COMPILATION ON )
 
 set(POGGERS_TESTS_BINARY_DIR "${CMAKE_BINARY_DIR}/tests")
 

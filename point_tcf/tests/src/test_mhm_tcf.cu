@@ -212,7 +212,8 @@ __global__ void find_first_fill(Filter * filter, Key * keys, Val * vals, uint64_
 
    auto tile = filter->get_my_tile();
 
-   uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   //uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   uint64_t tid = hipex::meta_group_size(tile)*blockIdx.x + hipex::meta_group_size(tile);
 
    if (tid != 0) return;
 
@@ -264,7 +265,8 @@ __global__ void speed_insert_kernel(Filter * filter, Key * keys, Val * vals, uin
 
    auto tile = filter->get_my_tile();
 
-   uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   uint64_t tid = hipex::meta_group_size(tile)*blockIdx.x + hipex::meta_group_size(tile);
+   //uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
 
    if (tid >= nvals) return;
 
@@ -294,7 +296,8 @@ __global__ void debug_insert_kernel(Filter * filter, Key * keys, Val * vals, uin
 
    auto tile = filter->get_my_tile();
 
-   uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   uint64_t tid = hipex::meta_group_size(tile)*blockIdx.x + hipex::meta_group_size(tile);
+   //uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
 
    if (tid >= nvals) return;
 
@@ -329,7 +332,8 @@ __global__ void debug_query_kernel(Filter * filter, Key * keys, Val * vals, uint
 
    auto tile = filter->get_my_tile();
 
-   uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   //uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   uint64_t tid = hipex::meta_group_size(tile)*blockIdx.x + hipex::meta_group_size(tile);
 
    if (tid >= nvals) return;
 
@@ -366,7 +370,8 @@ __global__ void speed_remove_kernel(Filter * filter, Key * keys, uint64_t nvals,
 
    auto tile = filter->get_my_tile();
 
-   uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   //uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   uint64_t tid = hipex::meta_group_size(tile)*blockIdx.x + hipex::meta_group_size(tile);
 
    if (tid >= nvals) return;
 
@@ -404,7 +409,8 @@ __global__ void speed_query_kernel(Filter * filter, Key * keys, Val * vals, uint
 
    auto tile = filter->get_my_tile();
 
-   uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   //uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   uint64_t tid = hipex::meta_group_size(tile)*blockIdx.x + hipex::meta_group_size(tile);
 
    if (tid >= nvals) return;
 
@@ -438,7 +444,8 @@ __global__ void fp_speed_query_kernel(Filter * filter, Key * keys, Val * vals, u
 
    auto tile = filter->get_my_tile();
 
-   uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   //uint64_t tid = tile.meta_group_size()*blockIdx.x + tile.meta_group_rank();
+   uint64_t tid = hipex::meta_group_size(tile)*blockIdx.x + hipex::meta_group_size(tile);
 
    if (tid >= nvals) return;
 
