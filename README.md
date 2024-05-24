@@ -80,6 +80,9 @@ series = {PPoPP '23}
 }
 ```
 
+Modifications from Paper
+------------
+The point TCF in the repo differs slightly from the version published in the paper in that it uses linear probing instead of double hashing for the backing table of the TCF. After publication, we realized that a false negative could be created in the filter if two keys with the same tag were inserted into the backyard and their buckets in the backyard overlapped. Replacing the backyard with a linear probing table rectifies this issue, and the TCF does not have any false negatives on the included aging benchmark.
 
 Contributing
 ------------

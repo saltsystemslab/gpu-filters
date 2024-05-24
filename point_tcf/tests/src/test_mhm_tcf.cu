@@ -15,7 +15,6 @@
 
 
 
-
 //#include "include/templated_quad_table.cuh"
 // #include <poggers/metadata.cuh>
 // #include <poggers/hash_schemes/murmurhash.cuh>
